@@ -16,7 +16,10 @@ defmodule Exoplanet.Config do
     output_theme: "classic_fancy"
   ]
 
-  def new(path) when is_binary(path) do
+  @doc """
+  Creates `Exoplanet.Config` from the given File
+  """
+  def from_file(path) when is_binary(path) do
     {attrs, _} =
       path
       |> File.read!()

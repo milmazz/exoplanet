@@ -1,4 +1,5 @@
 defmodule Exoplanet.Parser do
+  @moduledoc false
   require Logger
 
   def parse(%Exoplanet.Config{sources: sources} = config) do
@@ -16,7 +17,7 @@ defmodule Exoplanet.Parser do
   end
 
   def parse({url, %{name: name} = _attrs}, config) do
-    # TODO: Apply filters
+    # TODO: Apply filters (e.g., remove images from posts)
     case Req.get(url, Application.get_env(:exoplanet, :planet_req_options, [])) do
       {:ok, %{status: 200, body: body}} ->
         items =
