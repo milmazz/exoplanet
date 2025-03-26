@@ -1,13 +1,23 @@
 defmodule Exoplanet.MixProject do
   use Mix.Project
 
+  @version "0.1.0"
+
   def project do
     [
       app: :exoplanet,
-      version: "0.1.0",
+      version: @version,
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      # Docs
+      name: "Exoplanet",
+      source_url: "https://github.com/milmazz/exoplanet",
+      docs: &docs/0,
+      # Package
+      package: package(),
+      description:
+        "Exoplanet is a feed aggregator library that combines multiple RSS and ATOM sources into a single, unified feed."
     ]
   end
 
@@ -24,7 +34,22 @@ defmodule Exoplanet.MixProject do
       {:req, "~> 0.5"},
       {:fast_rss, "~> 0.5"},
       {:timex, "~> 3.7"},
-      {:plug, "~> 1.0", only: [:test]}
+      {:plug, "~> 1.0", only: [:test]},
+      {:ex_doc, "~> 0.34", only: :dev, runtime: false}
+    ]
+  end
+
+  defp docs do
+    [
+      main: "Exoplanet",
+      extras: ["README.md"]
+    ]
+  end
+
+  defp package do
+    [
+      licenses: ["Apache-2.0"],
+      links: %{"GitHub" => "https://github.com/milmazz/exoplanet"}
     ]
   end
 end
