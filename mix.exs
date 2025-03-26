@@ -1,7 +1,7 @@
 defmodule Exoplanet.MixProject do
   use Mix.Project
 
-  @version "0.1.0"
+  @version "0.2.0-dev"
 
   def project do
     [
@@ -17,7 +17,7 @@ defmodule Exoplanet.MixProject do
       # Package
       package: package(),
       description:
-        "Exoplanet is a feed aggregator library that combines multiple RSS and ATOM sources into a single, unified feed."
+        "Exoplanet is a feed aggregator library that combines multiple RSS and Atom sources into a single, unified feed."
     ]
   end
 

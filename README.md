@@ -1,9 +1,9 @@
 # Exoplanet
 
-Exoplanet is a feed aggregator library that combines multiple RSS and ATOM
+Exoplanet is a feed aggregator library that combines multiple RSS and Atom
 sources into a single, unified feed.
 
-Exoplanet downloads news feeds, following the RSS or ATOM specs, and aggregates
+Exoplanet downloads news feeds, following the RSS or Atom specs, and aggregates
 their content together into a single combined feed. The news will be ordered
 based on their publication date, in descending order.
 
