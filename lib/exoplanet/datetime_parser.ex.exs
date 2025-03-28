@@ -68,12 +68,26 @@ defmodule Exoplanet.DateTimeParser do
   defparsecp(:datetime, date_time)
   # parsec:Exoplanet.DateTimeParser
 
+  alias Exoplanet.ParseError
+
   def parse(dt) when is_binary(dt) do
-    with {:ok, tokens, _, _, _, _} <- datetime(dt),
-         [day, month, year, hour, minute, second] <- normalize_seconds(tokens),
-         year <- normalize_year(year),
-         {:ok, dt} <- NaiveDateTime.new(year, month, day, hour, minute, second) do
-      dt
+    with {:ok, tokens, _, _, _, _} <- datetime(dt) do
+      [day, month, year, hour, minute, second] = normalize_seconds(tokens)
+      year = normalize_year(year)
+      NaiveDateTime.new(year, month, day, hour, minute, second)
+    end
+  end
+
+  def parse!(dt) do
+    case parse(dt) do
+      {:ok, dt} ->
+        dt
+
+      {:error, reason} ->
+        raise ParseError, message: "#{inspect(reason)}"
+
+      {:error, reason, _rest, _context, _line, _byte_offset} ->
+        raise ParseError, message: reason
     end
   end
 

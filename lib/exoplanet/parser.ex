@@ -48,7 +48,7 @@ defmodule Exoplanet.Parser do
             authors = List.wrap(item["author"] || name)
             categories = item["categories"]
             id = item["link"] || get_in(item, ["guid", "value"])
-            published = item["pub_date"] && Exoplanet.DateTimeParser.parse(item["pub_date"])
+            published = item["pub_date"] && Exoplanet.DateTimeParser.parse!(item["pub_date"])
 
             attrs = %{
               authors: authors,
