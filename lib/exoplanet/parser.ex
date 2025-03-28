@@ -37,7 +37,8 @@ defmodule Exoplanet.Parser do
     end
   end
 
-  defp parse_rss(url, body, name) do
+  @doc false
+  def parse_rss(url, body, name) do
     case FastRSS.parse_rss(body) do
       {:ok, %{"items" => items}} ->
         parsed_items =
@@ -47,8 +48,7 @@ defmodule Exoplanet.Parser do
             authors = List.wrap(item["author"] || name)
             categories = item["categories"]
             id = item["link"] || get_in(item, ["guid", "value"])
-            # TODO: Remove Timex dependency
-            published = item["pub_date"] && Timex.parse!(item["pub_date"], "{RFC822}")
+            published = item["pub_date"] && Exoplanet.DateTimeParser.parse(item["pub_date"])
 
             attrs = %{
               authors: authors,
@@ -69,7 +69,8 @@ defmodule Exoplanet.Parser do
     end
   end
 
-  defp parse_atom(url, body, name) do
+  @doc false
+  def parse_atom(url, body, name) do
     case FastRSS.parse_atom(body) do
       {:ok, %{"entries" => entries}} ->
         parsed_entries =
