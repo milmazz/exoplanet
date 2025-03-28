@@ -1,22 +1,5 @@
 defmodule Exoplanet.DateTimeParser do
   @moduledoc false
-  def parse(dt) when is_binary(dt) do
-    with {:ok, tokens, _, _, _, _} <- datetime(dt),
-         [day, month, year, hour, minute, second, _zone_abbr] <- normalize_seconds(tokens),
-         {:ok, dt} <- NaiveDateTime.new(year, month, day, hour, minute, second) do
-      dt
-    end
-  end
-
-  defp normalize_seconds([_day, _month, _year, _hour, _minute, _second, _zone_abbr] = terms),
-    do: terms
-
-  defp normalize_seconds([day, month, year, hour, minute, zone_abbr]),
-    do: [day, month, year, hour, minute, 0, zone_abbr]
-
-  def normalize_year(offset) when offset < 2000, do: 2000 + offset
-  def normalize_year(year), do: year
-
   # parsec:Exoplanet.DateTimeParser
   import NimbleParsec
 
@@ -45,7 +28,7 @@ defmodule Exoplanet.DateTimeParser do
   # All date-times in RSS conform to the Date and Time Specification of RFC 822,
   # with the exception that the year may be expressed with two characters
   # or four characters (four preferred).
-  year = [integer(4), integer(2)] |> choice() |> map({__MODULE__, :normalize_year, []})
+  year = choice([integer(4), integer(2)])
 
   # date        =  1*2DIGIT month 2DIGIT        ; day month year
   #                                             ;  e.g. 20 Jun 82
@@ -64,13 +47,12 @@ defmodule Exoplanet.DateTimeParser do
     |> integer(2)
     |> optional(string(":") |> ignore() |> integer(2))
 
-  zone = ascii_string([?A..?Z], max: 3)
-
   # time        =  hour zone                    ; ANSI and Military
-  time =
-    hour
-    |> ignore(space)
-    |> concat(zone)
+  # NOTE: I will ignore the zone, given the result will be a `NaiveDateTime`
+  # time =
+  #   hour
+  #   |> ignore(space)
+  #   |> concat(zone)
 
   # date-time   =  [ day "," ] date time        ; dd mm yy
   #                                             ;  hh:mm:ss zzz
@@ -81,9 +63,26 @@ defmodule Exoplanet.DateTimeParser do
     |> optional()
     |> concat(date)
     |> ignore(space)
-    |> concat(time)
+    |> concat(hour)
 
-  defparsec(:datetime, date_time)
-
+  defparsecp(:datetime, date_time)
   # parsec:Exoplanet.DateTimeParser
+
+  def parse(dt) when is_binary(dt) do
+    with {:ok, tokens, _, _, _, _} <- datetime(dt),
+         [day, month, year, hour, minute, second] <- normalize_seconds(tokens),
+         year <- normalize_year(year),
+         {:ok, dt} <- NaiveDateTime.new(year, month, day, hour, minute, second) do
+      dt
+    end
+  end
+
+  defp normalize_seconds([_day, _month, _year, _hour, _minute, _second] = terms),
+    do: terms
+
+  defp normalize_seconds([day, month, year, hour, minute]),
+    do: [day, month, year, hour, minute, 0]
+
+  defp normalize_year(offset) when offset < 2000, do: 2000 + offset
+  defp normalize_year(year), do: year
 end

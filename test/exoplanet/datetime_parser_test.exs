@@ -8,6 +8,7 @@ defmodule Exoplanet.DateTimeParserTest do
       assert ~N[2024-11-18 11:00:00] == DateTimeParser.parse("Mon, 18 Nov 2024 11:00:00 EST")
       assert ~N[2024-11-18 11:00:00] == DateTimeParser.parse("Mon, 18 Nov 2024 11:00 EST")
       assert ~N[2024-11-18 11:00:00] == DateTimeParser.parse("18 Nov 2024 11:00 EST")
+      assert ~N[2025-01-16 16:17:09] == DateTimeParser.parse("Thu, 16 Jan 2025 16:17:09 +0000")
     end
   end
 end
