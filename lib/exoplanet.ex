@@ -19,7 +19,7 @@ defmodule Exoplanet do
     config
     |> Exoplanet.Parser.parse()
     |> Stream.map(fn {attrs, body} -> Exoplanet.Post.build(attrs, body) end)
-    |> Enum.sort_by(& &1.published, {:desc, Date})
+    |> Enum.sort_by(& &1.published, {:desc, NaiveDateTime})
     |> Enum.take(config.items)
   end
 end

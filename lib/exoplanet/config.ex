@@ -7,8 +7,10 @@ defmodule Exoplanet.Config do
   * `name` - your planet's name
   * `link` - link to the main page
   * `owner_name` - your name
-  * `owner_email` your e-mail address
+  * `owner_email` - your e-mail address
+  * `about` - information about your Planet
   * `feed_timeout` - time in seconds the request to any given feed should timeout
+  * `related_sites` - map of links to related sites, like other Planets or Feed Aggregators
   """
 
   @type t :: %__MODULE__{
@@ -16,12 +18,14 @@ defmodule Exoplanet.Config do
           link: String.t(),
           owner_email: String.t(),
           owner_name: String.t(),
+          about: String.t(),
           sources: map(),
           new_feed_items: pos_integer(),
-          feed_timeout: pos_integer()
+          feed_timeout: pos_integer(),
+          related_sites: map()
         }
 
-  @enforce_keys [:name, :link, :owner_name, :owner_email, :sources]
+  @enforce_keys [:name, :link, :owner_name, :owner_email, :sources, :about]
   defstruct [
     :name,
     :link,
@@ -30,12 +34,14 @@ defmodule Exoplanet.Config do
     :sources,
     :cache_directory,
     :output_dir,
+    :about,
     activity_threshold: 90,
     new_feed_items: 4,
     log_level: :debug,
     feed_timeout: 20,
     items: 60,
-    output_theme: "classic_fancy"
+    output_theme: "classic_fancy",
+    related_sites: %{}
   ]
 
   @doc """

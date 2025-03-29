@@ -121,7 +121,8 @@ defmodule ExoplanetTest do
       owner_name: "John Doe",
       owner_email: "jdoe@example.com",
       name: "Exoplanet",
-      link: "https://example.com"
+      link: "https://example.com",
+      about: ""
     ]
 
     struct!(Exoplanet.Config, Keyword.merge(default_opts, opts))
