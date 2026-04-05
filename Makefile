@@ -1,28 +1,26 @@
-.PHONY: setup test format clean shell claude help
+.PHONY: dev:build dev:up dev:stop dev:shell dev:claude help
+
+COMPOSE = docker compose -f .devcontainer/docker-compose.yml
 
 help:
 	@echo "Development Commands:"
-	@echo "  make setup       Install and compile dependencies"
-	@echo "  make test        Run all tests"
-	@echo "  make format      Format code with mix format"
-	@echo "  make clean       Clean build artifacts"
-	@echo "  make shell       Open IEx interactive shell"
-	@echo "  make claude      Run Claude CLI (args: ARGS=\"--help\")"
+	@echo "  make dev:build   Build the dev container"
+	@echo "  make dev:up      Start the dev container"
+	@echo "  make dev:stop    Stop the dev container"
+	@echo "  make dev:shell   Open a shell inside the dev container"
+	@echo "  make dev:claude  Start Claude CLI (--dangerously-skip-permissions)"
 
-setup:
-	mix do deps.get + compile
+dev\:build:
+	$(COMPOSE) build
 
-test:
-	mix test
+dev\:up:
+	$(COMPOSE) up -d
 
-format:
-	mix format
+dev\:stop:
+	$(COMPOSE) stop
 
-clean:
-	mix clean
+dev\:shell:
+	$(COMPOSE) exec exoplanet /bin/bash
 
-shell:
-	iex -S mix
-
-claude:
-	claude "$(ARGS)"
+dev\:claude:
+	$(COMPOSE) exec exoplanet claude --dangerously-skip-permissions
