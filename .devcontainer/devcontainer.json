@@ -3,7 +3,7 @@
   "dockerComposeFile": "docker-compose.yml",
   "service": "exoplanet",
   "workspaceFolder": "/workspace",
-  "postCreateCommand": "make setup",
+  "postCreateCommand": "mix do deps.get + compile",
   "remoteUser": "elixir",
   "customizations": {
     "vscode": {
