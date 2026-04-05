@@ -14,6 +14,7 @@ dev\:build:
 	$(COMPOSE) build
 
 dev\:up:
+	mkdir -p $(HOME)/.local/share/fish
 	$(COMPOSE) up -d
 
 dev\:stop:
