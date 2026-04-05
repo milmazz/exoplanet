@@ -6,6 +6,9 @@ RUN apt-get update && apt-get install -y \
     nodejs \
     npm \
     iptables \
+    ipset \
+    dnsutils \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Claude CLI globally
