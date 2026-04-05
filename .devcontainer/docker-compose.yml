@@ -1,0 +1,50 @@
+services:
+  exoplanet:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    container_name: exoplanet-dev
+    working_dir: /workspace
+    volumes:
+      - type: bind
+        source: ..
+        target: /workspace
+        read_only: false
+      - type: bind
+        source: ./scripts
+        target: /scripts
+        read_only: true
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 256M
+      - type: tmpfs
+        target: /run
+        tmpfs:
+          size: 8M
+      - type: volume
+        source: elixir-home
+        target: /home/elixir
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    stdin_open: true
+    tty: true
+    networks:
+      - exoplanet-net
+    environment:
+      - MIX_ENV=dev
+    entrypoint: /scripts/entrypoint.sh
+    command: /bin/bash
+
+volumes:
+  elixir-home:
+
+networks:
+  exoplanet-net:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.enable_ip_masquerade: "false"

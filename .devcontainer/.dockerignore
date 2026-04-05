@@ -1,0 +1,14 @@
+.git
+.gitignore
+_build
+deps
+.devcontainer/.env.devcontainer
+.env
+.env.*
+*.db
+*.db-shm
+*.db-wal
+node_modules
+.worktrees
+priv/static/*
+!priv/static/favicon.ico
