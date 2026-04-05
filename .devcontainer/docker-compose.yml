@@ -25,6 +25,9 @@ services:
       - type: volume
         source: elixir-home
         target: /home/elixir
+      - type: bind
+        source: ${HOME}/.local/share/fish
+        target: /home/elixir/.local/share/fish
     read_only: true
     cap_drop:
       - ALL
@@ -35,8 +38,6 @@ services:
     tty: true
     networks:
       - exoplanet-net
-    environment:
-      - MIX_ENV=dev
     entrypoint: /scripts/entrypoint.sh
     command: /bin/bash
 
