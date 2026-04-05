@@ -13,14 +13,14 @@ defmodule Exoplanet.Post do
           published: NaiveDateTime.t()
         }
   @enforce_keys [:id, :authors, :title, :body, :published]
-  defstruct [:id, :authors, :title, :body, :published]
+  defstruct [:id, :authors, :title, :body, :published, :updated, :summary]
 
   @doc """
   Builds the struct of posts or feed entries
   """
   @spec build(map(), String.t()) :: t()
   def build(attrs, body) do
-    attrs = Map.take(attrs, [:id, :authors, :title, :published])
+    attrs = Map.take(attrs, [:id, :authors, :title, :published, :updated, :summary])
 
     struct!(__MODULE__, [body: body] ++ Map.to_list(attrs))
   end

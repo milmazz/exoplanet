@@ -38,6 +38,9 @@ defmodule ExoplanetTest do
              "In this article, I will continue talking about Oban, but I’ll focus on how to..."
 
     assert NaiveDateTime.compare(post.published, ~N[2022-02-21 00:00:00]) == :eq
+    assert NaiveDateTime.compare(post.updated, ~N[2022-02-22 00:00:00]) == :eq
+
+    assert post.summary == "Testing your Oban Workers and its configuration."
   end
 
   test "success: order the posts by published date in descending order" do
@@ -54,6 +57,42 @@ defmodule ExoplanetTest do
     config = build_config(sources: sources)
     posts = Exoplanet.build(config)
     assert posts == Enum.sort_by(posts, & &1.published, {:desc, Date})
+  end
+
+  test "success: in case publishing date is missing, use last update as fallback" do
+    Req.Test.stub(Exoplanet.Parser, fn conn ->
+      data = """
+      <?xml version="1.0" encoding="utf-8"?>
+      <feed xmlns="http://www.w3.org/2005/Atom">
+        <title>Example</title>
+        <updated>2025-03-26T09:37:06+00:00</updated>
+        <id>http://example.com</id>
+
+        <entry>
+          <title>title</title>
+          <link href="http://example.com/title/"/>
+
+          <author>
+          <name>John Doe</name>
+          </author>
+
+          <updated>2025-03-25T00:00:00+00:00</updated>
+          <id>some-id</id>
+          <content>...</content>
+        </entry>
+      </feed>
+      """
+
+      Req.Test.html(conn, data)
+    end)
+
+    sources = %{"https://milmazz.uno/atom.xml" => %{name: "Milton Mazzarri"}}
+    config = build_config(sources: sources)
+
+    [%Exoplanet.Post{} = post] = Exoplanet.build(config)
+
+    assert post.published
+    assert Date.compare(post.published, post.updated) == :eq
   end
 
   test "error: emit logs when cannot parse an atom feed" do
@@ -171,8 +210,9 @@ defmodule ExoplanetTest do
         <title type="html">Oban: Testing your Workers and Configuration</title>
         <link href="https://milmazz.uno/article/2022/02/21/oban-testing-your-workers-and-configuration/" rel="alternate" type="text/html" title="Oban: Testing your Workers and Configuration" />
         <published>2022-02-21T00:00:00-06:00</published>
-        <updated>2022-02-21T00:00:00-06:00</updated>
+        <updated>2022-02-22T00:00:00-06:00</updated>
         <id>https://milmazz.uno/article/2022/02/21/oban-testing-your-workers-and-configuration</id>
+        <summary type="html"><![CDATA[Testing your Oban Workers and its configuration.]]></summary>
         <content type="html" xml:base="https://milmazz.uno/article/2022/02/21/oban-testing-your-workers-and-configuration/">In this article, I will continue talking about Oban, but I’ll focus on how to...</content>
       </entry>
     </feed>

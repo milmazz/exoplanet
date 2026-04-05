@@ -82,6 +82,7 @@ defmodule Exoplanet.Parser do
             id = Map.get(entry, "id")
             published = entry["published"] && NaiveDateTime.from_iso8601!(entry["published"])
             updated = entry["updated"] && NaiveDateTime.from_iso8601!(entry["updated"])
+            summary = get_in(entry, ["summary", "value"])
 
             authors = if authors == [], do: [name], else: authors
 
@@ -90,8 +91,9 @@ defmodule Exoplanet.Parser do
               title: title,
               categories: categories,
               id: id,
-              published: published,
-              updated: updated
+              published: published || updated,
+              updated: updated,
+              summary: summary
             }
 
             {attrs, content}
