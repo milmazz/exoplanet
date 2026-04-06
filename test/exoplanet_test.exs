@@ -106,10 +106,7 @@ defmodule ExoplanetTest do
     config = build_config(sources: sources)
     [post] = Exoplanet.build(config)
 
-    assert post.categories == [
-             %{"domain" => nil, "name" => "Elixir"},
-             %{"domain" => nil, "name" => "BEAM"}
-           ]
+    assert post.categories == ["Elixir", "BEAM"]
   end
 
   test "error: emit logs when cannot parse an atom feed" do

@@ -130,7 +130,7 @@ defmodule Exoplanet.Parser do
             title = item["title"]
             content = item["description"]
             authors = List.wrap(item["author"] || name)
-            categories = item["categories"]
+            categories = Enum.map(item["categories"] || [], & &1["name"])
             id = item["link"] || get_in(item, ["guid", "value"])
             published = item["pub_date"] && Exoplanet.DateTimeParser.parse!(item["pub_date"])
 
