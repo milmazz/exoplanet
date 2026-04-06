@@ -17,6 +17,7 @@ defmodule ExoplanetTest do
     assert post.title == "Sequences"
     assert post.body =~ "<h1>Sequences"
     assert NaiveDateTime.compare(post.published, ~N[2020-12-14 00:00:00]) == :eq
+    assert post.feed_url == "https://www.theerlangelist.com/rss"
   end
 
   test "success: parses atom feeds" do
@@ -41,6 +42,7 @@ defmodule ExoplanetTest do
     assert NaiveDateTime.compare(post.updated, ~N[2022-02-22 00:00:00]) == :eq
 
     assert post.summary == "Testing your Oban Workers and its configuration."
+    assert post.feed_url == "https://milmazz.uno/atom.xml"
   end
 
   test "success: order the posts by published date in descending order" do

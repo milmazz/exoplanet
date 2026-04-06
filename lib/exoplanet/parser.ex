@@ -18,14 +18,36 @@ defmodule Exoplanet.Parser do
 
   def parse({url, %{name: name} = _attrs}, config) do
     # TODO: Apply filters (e.g., remove images from posts)
-    case Req.get(url, Application.get_env(:exoplanet, :planet_req_options, [])) do
-      {:ok, %{status: 200, body: body}} ->
+    case fetch_body(url, config) do
+      nil ->
+        []
+
+      body ->
         items =
           if String.contains?(body, "<rss version="),
             do: parse_rss(url, body, name),
             else: parse_atom(url, body, name)
 
         Enum.take(items, config.new_feed_items)
+    end
+  end
+
+  # Fetches the feed body, using the configured cache adapter for conditional
+  # GET when available. Returns the body string, or nil on an uncached error.
+  defp fetch_body(url, config) do
+    {conditional_headers, cached_entry} = build_conditional_headers(url, config)
+
+    base_opts = Application.get_env(:exoplanet, :planet_req_options, [])
+    opts = merge_headers(base_opts, conditional_headers)
+
+    case Req.get(url, opts) do
+      {:ok, %{status: 304}} ->
+        Logger.debug("Feed #{url}: 304 Not Modified, using cached body")
+        cached_entry.body
+
+      {:ok, %{status: 200, body: body} = resp} ->
+        maybe_update_cache(url, resp, body)
+        body
 
       # TODO: Handle other status codes like 404, 301, etc.
       {:error, reason} ->
@@ -33,8 +55,70 @@ defmodule Exoplanet.Parser do
           "something went wrong while retrieving URL: #{url}, reason: #{inspect(reason)}"
         )
 
-        []
+        # Fall back to cached body (if any) so a transient error doesn't blank
+        # out content we already have.
+        cached_entry && cached_entry.body
     end
+  end
+
+  defp cache_adapter, do: Application.get_env(:exoplanet, :cache_adapter)
+
+  defp build_conditional_headers(url, _config) do
+    case cache_adapter() do
+      nil ->
+        {[], nil}
+
+      adapter ->
+        case adapter.get(url) do
+          %{etag: etag, last_modified: last_modified} = entry ->
+            headers =
+              []
+              |> prepend_if(etag, {"if-none-match", etag})
+              |> prepend_if(last_modified, {"if-modified-since", last_modified})
+
+            {headers, entry}
+
+          nil ->
+            {[], nil}
+        end
+    end
+  end
+
+  defp maybe_update_cache(url, resp, body) do
+    case cache_adapter() do
+      nil ->
+        :ok
+
+      adapter ->
+        etag = get_response_header(resp, "etag")
+        last_modified = get_response_header(resp, "last-modified")
+
+        if etag || last_modified do
+          adapter.put(url, %{etag: etag, last_modified: last_modified, body: body})
+        end
+
+        :ok
+    end
+  end
+
+  # Req 0.5 stores response headers as %{String.t() => [String.t()]}
+  defp get_response_header(%{headers: headers}, name) do
+    case Map.get(headers, name, []) do
+      [value | _] -> value
+      _ -> nil
+    end
+  end
+
+  defp merge_headers(opts, []), do: opts
+
+  defp merge_headers(opts, extra_headers) do
+    Keyword.update(opts, :headers, extra_headers, fn existing ->
+      existing ++ extra_headers
+    end)
+  end
+
+  defp prepend_if(list, condition, item) do
+    if condition, do: [item | list], else: list
   end
 
   @doc false
@@ -51,6 +135,7 @@ defmodule Exoplanet.Parser do
             published = item["pub_date"] && Exoplanet.DateTimeParser.parse!(item["pub_date"])
 
             attrs = %{
+              feed_url: url,
               authors: authors,
               title: title,
               categories: categories,
@@ -87,6 +172,7 @@ defmodule Exoplanet.Parser do
             authors = if authors == [], do: [name], else: authors
 
             attrs = %{
+              feed_url: url,
               authors: authors,
               title: title,
               categories: categories,
