@@ -109,6 +109,30 @@ defmodule ExoplanetTest do
     assert post.categories == ["Elixir", "BEAM"]
   end
 
+  test "success: parses categories from atom feeds" do
+    Req.Test.stub(Exoplanet.Parser, fn conn ->
+      Req.Test.html(conn, feed(:atom_with_categories))
+    end)
+
+    sources = %{"https://example.com/atom.xml" => %{name: "Example"}}
+    config = build_config(sources: sources)
+    [%Exoplanet.Post{} = post] = Exoplanet.build(config)
+
+    assert post.categories == ["Elixir", "BEAM"]
+  end
+
+  test "success: categories is nil when feed has no categories" do
+    Req.Test.stub(Exoplanet.Parser, fn conn ->
+      Req.Test.html(conn, feed(:atom))
+    end)
+
+    sources = %{"https://milmazz.uno/atom.xml" => %{name: "Milton Mazzarri"}}
+    config = build_config(sources: sources)
+    [%Exoplanet.Post{} = post] = Exoplanet.build(config)
+
+    assert post.categories == nil
+  end
+
   test "error: emit logs when cannot parse an atom feed" do
     Req.Test.stub(Exoplanet.Parser, fn conn ->
       data = """
@@ -250,6 +274,29 @@ defmodule ExoplanetTest do
         </item>
       </channel>
     </rss>
+    """
+  end
+
+  defp feed(:atom_with_categories) do
+    """
+    <?xml version="1.0" encoding="utf-8"?>
+    <feed xmlns="http://www.w3.org/2005/Atom">
+      <title>Example</title>
+      <id>https://example.com/atom.xml</id>
+      <updated>2024-01-01T00:00:00Z</updated>
+
+      <entry>
+        <title>Post With Categories</title>
+        <link href="https://example.com/post"/>
+        <id>https://example.com/post</id>
+        <published>2024-01-01T00:00:00Z</published>
+        <updated>2024-01-01T00:00:00Z</updated>
+        <author><name>Example Author</name></author>
+        <category term="Elixir"/>
+        <category term="BEAM"/>
+        <content>Content here</content>
+      </entry>
+    </feed>
     """
   end
 end

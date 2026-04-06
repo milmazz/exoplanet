@@ -23,7 +23,16 @@ defmodule Exoplanet.Post do
   @spec build(map(), String.t()) :: t()
   def build(attrs, body) do
     attrs =
-      Map.take(attrs, [:id, :feed_url, :authors, :title, :categories, :published, :updated, :summary])
+      Map.take(attrs, [
+        :id,
+        :feed_url,
+        :authors,
+        :title,
+        :categories,
+        :published,
+        :updated,
+        :summary
+      ])
 
     struct!(__MODULE__, [body: body] ++ Map.to_list(attrs))
   end

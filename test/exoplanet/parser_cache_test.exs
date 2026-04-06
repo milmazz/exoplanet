@@ -34,7 +34,12 @@ defmodule Exoplanet.ParserCacheTest do
 
   test "success: 304 Not Modified uses cached body" do
     url = "https://www.theerlangelist.com/rss"
-    {:ok, _} = TestCacheAdapter.start(%{url => %{etag: "\"abc123\"", last_modified: nil, body: rss_feed()}})
+
+    {:ok, _} =
+      TestCacheAdapter.start(%{
+        url => %{etag: "\"abc123\"", last_modified: nil, body: rss_feed()}
+      })
+
     on_exit(fn -> TestCacheAdapter.stop() end)
 
     Req.Test.stub(Exoplanet.Parser, fn conn ->
@@ -51,7 +56,12 @@ defmodule Exoplanet.ParserCacheTest do
 
   test "success: network error falls back to cached body" do
     url = "https://www.theerlangelist.com/rss"
-    {:ok, _} = TestCacheAdapter.start(%{url => %{etag: "\"abc123\"", last_modified: nil, body: rss_feed()}})
+
+    {:ok, _} =
+      TestCacheAdapter.start(%{
+        url => %{etag: "\"abc123\"", last_modified: nil, body: rss_feed()}
+      })
+
     on_exit(fn -> TestCacheAdapter.stop() end)
 
     Req.Test.stub(Exoplanet.Parser, fn conn ->
