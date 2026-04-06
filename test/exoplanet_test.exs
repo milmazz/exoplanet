@@ -97,6 +97,21 @@ defmodule ExoplanetTest do
     assert Date.compare(post.published, post.updated) == :eq
   end
 
+  test "success: parses categories from rss feeds" do
+    Req.Test.stub(Exoplanet.Parser, fn conn ->
+      Req.Test.html(conn, feed(:rss_with_categories))
+    end)
+
+    sources = %{"https://example.com/feed.rss" => %{name: "Example"}}
+    config = build_config(sources: sources)
+    [post] = Exoplanet.build(config)
+
+    assert post.categories == [
+             %{"domain" => nil, "name" => "Elixir"},
+             %{"domain" => nil, "name" => "BEAM"}
+           ]
+  end
+
   test "error: emit logs when cannot parse an atom feed" do
     Req.Test.stub(Exoplanet.Parser, fn conn ->
       data = """
@@ -218,6 +233,26 @@ defmodule ExoplanetTest do
         <content type="html" xml:base="https://milmazz.uno/article/2022/02/21/oban-testing-your-workers-and-configuration/">In this article, I will continue talking about Oban, but I’ll focus on how to...</content>
       </entry>
     </feed>
+    """
+  end
+
+  defp feed(:rss_with_categories) do
+    """
+    <rss version="2.0">
+      <channel>
+        <title>Example</title>
+        <link>https://example.com</link>
+
+        <item>
+          <title>Post With Categories</title>
+          <link>https://example.com/post</link>
+          <pubDate>Mon, 14 Dec 20 00:00:00 +0000</pubDate>
+          <description>Content here</description>
+          <category>Elixir</category>
+          <category>BEAM</category>
+        </item>
+      </channel>
+    </rss>
     """
   end
 end

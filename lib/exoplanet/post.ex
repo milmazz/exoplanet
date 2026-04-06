@@ -11,17 +11,19 @@ defmodule Exoplanet.Post do
           authors: [String.t()],
           title: String.t(),
           body: String.t(),
+          categories: [String.t()] | nil,
           published: NaiveDateTime.t()
         }
   @enforce_keys [:id, :feed_url, :authors, :title, :body, :published]
-  defstruct [:id, :feed_url, :authors, :title, :body, :published, :updated, :summary]
+  defstruct [:id, :feed_url, :authors, :title, :body, :categories, :published, :updated, :summary]
 
   @doc """
   Builds the struct of posts or feed entries
   """
   @spec build(map(), String.t()) :: t()
   def build(attrs, body) do
-    attrs = Map.take(attrs, [:id, :feed_url, :authors, :title, :published, :updated, :summary])
+    attrs =
+      Map.take(attrs, [:id, :feed_url, :authors, :title, :categories, :published, :updated, :summary])
 
     struct!(__MODULE__, [body: body] ++ Map.to_list(attrs))
   end
