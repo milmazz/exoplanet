@@ -104,7 +104,7 @@ defmodule ExoplanetTest do
 
     sources = %{"https://example.com/feed.rss" => %{name: "Example"}}
     config = build_config(sources: sources)
-    [post] = Exoplanet.build(config)
+    [%Exoplanet.Post{} = post] = Exoplanet.build(config)
 
     assert post.categories == ["Elixir", "BEAM"]
   end
