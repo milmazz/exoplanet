@@ -44,9 +44,11 @@ defmodule Exoplanet.Parser do
       {:ok, %{status: 304}} ->
         Logger.debug("Feed #{url}: 304 Not Modified, using cached body")
         maybe_notify_success(url, 304)
-        cached_entry.body
+        cached_entry && cached_entry.body
 
       {:ok, %{status: 200, body: body} = resp} ->
+        # maybe_update_cache stores etag/body; maybe_notify_success resets error state.
+        # Both write to the feeds table on cacheable responses — intentional trade-off.
         maybe_update_cache(url, resp, body)
         maybe_notify_success(url, 200)
         body
