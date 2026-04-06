@@ -43,17 +43,25 @@ defmodule Exoplanet.Parser do
     case Req.get(url, opts) do
       {:ok, %{status: 304}} ->
         Logger.debug("Feed #{url}: 304 Not Modified, using cached body")
+        maybe_notify_success(url, 304)
         cached_entry.body
 
       {:ok, %{status: 200, body: body} = resp} ->
         maybe_update_cache(url, resp, body)
+        maybe_notify_success(url, 200)
         body
 
-      # TODO: Handle other status codes like 404, 301, etc.
+      {:ok, %{status: status}} ->
+        Logger.error("Feed #{url}: unexpected HTTP status #{status}")
+        maybe_notify_error(url, status, "HTTP #{status}")
+        cached_entry && cached_entry.body
+
       {:error, reason} ->
         Logger.error(
           "something went wrong while retrieving URL: #{url}, reason: #{inspect(reason)}"
         )
+
+        maybe_notify_error(url, nil, inspect(reason))
 
         # Fall back to cached body (if any) so a transient error doesn't blank
         # out content we already have.
@@ -62,6 +70,34 @@ defmodule Exoplanet.Parser do
   end
 
   defp cache_adapter, do: Application.get_env(:exoplanet, :cache_adapter)
+
+  defp maybe_notify_success(url, status) do
+    case cache_adapter() do
+      nil ->
+        :ok
+
+      adapter ->
+        if function_exported?(adapter, :on_success, 2) do
+          adapter.on_success(url, status)
+        end
+
+        :ok
+    end
+  end
+
+  defp maybe_notify_error(url, status, reason) do
+    case cache_adapter() do
+      nil ->
+        :ok
+
+      adapter ->
+        if function_exported?(adapter, :on_error, 3) do
+          adapter.on_error(url, status, reason)
+        end
+
+        :ok
+    end
+  end
 
   defp build_conditional_headers(url, _config) do
     case cache_adapter() do
