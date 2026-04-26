@@ -29,4 +29,37 @@ defmodule Exoplanet.Filters do
       {key, value}, acc -> Map.put(acc, key, value)
     end)
   end
+
+  @doc """
+  Applies the merged filter map to a list of `Exoplanet.Post` structs.
+
+  Returns the filtered list. Posts dropped by category filters are removed
+  entirely. The `strip_images` and `excerpt_length` filters modify each
+  post's `summary` (and HTML body for image stripping).
+  """
+  @spec apply([Exoplanet.Post.t()], t()) :: [Exoplanet.Post.t()]
+  def apply(posts, filters) do
+    Enum.filter(posts, &keep?(&1, filters))
+  end
+
+  defp keep?(post, filters) do
+    passes_allowlist?(post.categories, filters.allow_categories) and
+      passes_blocklist?(post.categories, filters.block_categories)
+  end
+
+  defp passes_allowlist?(_categories, []), do: true
+  defp passes_allowlist?(nil, _allow), do: false
+
+  defp passes_allowlist?(categories, allow) do
+    allow_lower = Enum.map(allow, &String.downcase/1)
+    Enum.any?(categories, &(String.downcase(&1) in allow_lower))
+  end
+
+  defp passes_blocklist?(_categories, []), do: true
+  defp passes_blocklist?(nil, _block), do: true
+
+  defp passes_blocklist?(categories, block) do
+    block_lower = Enum.map(block, &String.downcase/1)
+    not Enum.any?(categories, &(String.downcase(&1) in block_lower))
+  end
 end

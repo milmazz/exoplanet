@@ -59,4 +59,80 @@ defmodule Exoplanet.FiltersTest do
       assert result == @defaults
     end
   end
+
+  describe "apply/2 — category filtering" do
+    defp post(opts \\ []) do
+      %Exoplanet.Post{
+        id: "1",
+        feed_url: "https://example.com/feed",
+        authors: ["Alice"],
+        title: "T",
+        body: "<p>body</p>",
+        categories: opts[:categories],
+        published: nil,
+        summary: opts[:summary]
+      }
+    end
+
+    @no_filters %{
+      allow_categories: [],
+      block_categories: [],
+      strip_images: false,
+      excerpt_length: nil
+    }
+
+    test "no filters: keeps all posts" do
+      posts = [post(categories: ["elixir"]), post(categories: nil)]
+      assert Filters.apply(posts, @no_filters) == posts
+    end
+
+    test "allow_categories: keeps posts with at least one matching category" do
+      filters = %{@no_filters | allow_categories: ["elixir", "erlang"]}
+      keep = post(categories: ["erlang", "otp"])
+      drop = post(categories: ["food"])
+
+      assert Filters.apply([keep, drop], filters) == [keep]
+    end
+
+    test "allow_categories: drops posts whose categories are nil" do
+      filters = %{@no_filters | allow_categories: ["elixir"]}
+      assert Filters.apply([post(categories: nil)], filters) == []
+    end
+
+    test "allow_categories: comparison is case-insensitive" do
+      filters = %{@no_filters | allow_categories: ["Elixir"]}
+
+      assert Filters.apply([post(categories: ["elixir"])], filters) ==
+               [post(categories: ["elixir"])]
+    end
+
+    test "block_categories: drops posts with any matching category" do
+      filters = %{@no_filters | block_categories: ["personal"]}
+      keep = post(categories: ["elixir"])
+      drop = post(categories: ["elixir", "personal"])
+
+      assert Filters.apply([keep, drop], filters) == [keep]
+    end
+
+    test "block_categories: posts with nil categories pass" do
+      filters = %{@no_filters | block_categories: ["personal"]}
+
+      assert Filters.apply([post(categories: nil)], filters) ==
+               [post(categories: nil)]
+    end
+
+    test "block_categories: comparison is case-insensitive" do
+      filters = %{@no_filters | block_categories: ["Personal"]}
+      assert Filters.apply([post(categories: ["personal"])], filters) == []
+    end
+
+    test "allow + block combined: post must match allow AND not match block" do
+      filters = %{@no_filters | allow_categories: ["elixir"], block_categories: ["draft"]}
+      keep = post(categories: ["elixir"])
+      drop_no_match = post(categories: ["food"])
+      drop_blocked = post(categories: ["elixir", "draft"])
+
+      assert Filters.apply([keep, drop_no_match, drop_blocked], filters) == [keep]
+    end
+  end
 end
