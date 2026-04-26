@@ -17,6 +17,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `categories` (list of tag/category strings), and `summary` (optional post summary).
 - `Exoplanet.Post` gains an `updated` field; the Atom parser falls back to `updated`
   when `published` is absent.
+- `Exoplanet.Config` accepts a `default_filters` field (default: empty filter map)
+  describing global content filters: `allow_categories`, `block_categories`,
+  `strip_images`, `excerpt_length`.
+- `Exoplanet.Filters` module with `merge/2` and `apply/2`. Per-feed filters
+  inside the `sources` map merge with `default_filters`; `allow_categories` and
+  `block_categories` replace defaults rather than union, all other keys merge
+  field-by-field.
+- `Exoplanet.Parser.parse/2` applies merged filters to each source's posts
+  before truncating to `new_feed_items`.
+- `:lazy_html` dependency for HTML manipulation in filters.
 
 ### Fixed
 

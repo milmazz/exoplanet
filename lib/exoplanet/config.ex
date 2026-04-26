@@ -24,7 +24,7 @@ defmodule Exoplanet.Config do
           new_feed_items: pos_integer(),
           feed_timeout: pos_integer(),
           related_sites: map(),
-          default_filters: map()
+          default_filters: Exoplanet.Filters.t()
         }
 
   @enforce_keys [:name, :link, :owner_name, :owner_email, :sources, :about]
