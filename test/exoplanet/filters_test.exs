@@ -283,4 +283,74 @@ defmodule Exoplanet.FiltersTest do
       assert result.body =~ "<div"
     end
   end
+
+  describe "apply/2 — excerpt_length" do
+    @excerpt_filters %{
+      allow_categories: [],
+      block_categories: [],
+      strip_images: false,
+      excerpt_length: 30
+    }
+
+    defp long_post(body, summary \\ nil) do
+      %Exoplanet.Post{
+        id: "1",
+        feed_url: "https://example.com/feed",
+        authors: ["A"],
+        title: "T",
+        body: body,
+        categories: nil,
+        published: nil,
+        summary: summary
+      }
+    end
+
+    test "summary already shorter than excerpt_length is left untouched" do
+      post = long_post("<p>full body</p>", "short")
+      [result] = Filters.apply([post], @excerpt_filters)
+      assert result.summary == "short"
+    end
+
+    test "summary longer than excerpt_length is replaced with truncated text" do
+      summary = "<p>" <> String.duplicate("word ", 50) <> "</p>"
+      post = long_post("<p>body</p>", summary)
+      [result] = Filters.apply([post], @excerpt_filters)
+      assert String.length(result.summary) <= 30
+      assert String.ends_with?(result.summary, "…")
+    end
+
+    test "summary absent: a summary is generated from body" do
+      body = "<p>" <> String.duplicate("hello ", 20) <> "</p>"
+      post = long_post(body, nil)
+      [result] = Filters.apply([post], @excerpt_filters)
+      assert is_binary(result.summary)
+      assert String.length(result.summary) <= 30
+      assert String.ends_with?(result.summary, "…")
+    end
+
+    test "body is never modified by excerpt_length" do
+      body = "<p>" <> String.duplicate("hello ", 20) <> "</p>"
+      post = long_post(body, nil)
+      [result] = Filters.apply([post], @excerpt_filters)
+      assert result.body == body
+    end
+
+    test "excerpt_length: nil leaves summary unchanged" do
+      filters = %{@excerpt_filters | excerpt_length: nil}
+      summary = String.duplicate("word ", 50)
+      post = long_post("<p>body</p>", summary)
+      [result] = Filters.apply([post], filters)
+      assert result.summary == summary
+    end
+
+    test "truncation breaks at the last whitespace before the limit" do
+      filters = %{@excerpt_filters | excerpt_length: 10}
+      post = long_post("<p>aaa bbb ccc ddd eee</p>", nil)
+      [result] = Filters.apply([post], filters)
+      assert String.length(result.summary) <= 10
+      assert String.ends_with?(result.summary, "…")
+      prefix = String.replace_trailing(result.summary, "…", "") |> String.trim_trailing()
+      assert prefix == "" or Regex.match?(~r/^\w+( \w+)*$/, prefix)
+    end
+  end
 end

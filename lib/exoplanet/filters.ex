@@ -47,13 +47,73 @@ defmodule Exoplanet.Filters do
     |> Enum.map(&transform(&1, filters))
   end
 
-  defp transform(post, %{strip_images: true}) do
+  defp transform(post, filters) do
+    post
+    |> apply_image_stripping(filters)
+    |> apply_excerpt(filters)
+  end
+
+  defp apply_image_stripping(post, %{strip_images: true}) do
     post
     |> Map.update!(:body, &maybe_strip_images/1)
     |> Map.update!(:summary, &maybe_strip_images/1)
   end
 
-  defp transform(post, _filters), do: post
+  defp apply_image_stripping(post, _filters), do: post
+
+  defp apply_excerpt(post, %{excerpt_length: n}) when is_integer(n) and n > 0 do
+    %{post | summary: compute_excerpt(post.summary, post.body, n)}
+  end
+
+  defp apply_excerpt(post, _filters), do: post
+
+  # If existing summary is already short enough, keep it. Otherwise build
+  # a truncated summary from the existing summary (preferred) or the body.
+  defp compute_excerpt(summary, body, n) do
+    source = summary || body || ""
+    text = html_to_text(source)
+
+    if String.length(text) <= n do
+      summary || truncate(text, n)
+    else
+      truncate(text, n)
+    end
+  end
+
+  defp html_to_text(""), do: ""
+
+  defp html_to_text(html) do
+    html
+    |> LazyHTML.from_fragment()
+    |> LazyHTML.text()
+    |> String.trim()
+    |> normalize_whitespace()
+  end
+
+  defp normalize_whitespace(text), do: String.replace(text, ~r/\s+/, " ")
+
+  # Truncate `text` to at most `n` characters total (including the "…").
+  # Cut at the last whitespace before the limit when possible.
+  defp truncate(_text, n) when n <= 1, do: "…"
+
+  defp truncate(text, n) do
+    if String.length(text) <= n do
+      text
+    else
+      # Reserve one character for the "…".
+      budget = n - 1
+      head = String.slice(text, 0, budget)
+
+      truncated =
+        case Regex.run(~r/\s+\S*\z/, head, return: :index) do
+          [{idx, _len}] -> String.slice(head, 0, idx)
+          _ -> head
+        end
+        |> String.trim_trailing()
+
+      truncated <> "…"
+    end
+  end
 
   defp maybe_strip_images(nil), do: nil
   defp maybe_strip_images(""), do: ""
