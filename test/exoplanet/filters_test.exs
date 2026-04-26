@@ -292,7 +292,7 @@ defmodule Exoplanet.FiltersTest do
       excerpt_length: 30
     }
 
-    defp long_post(body, summary \\ nil) do
+    defp long_post(body, summary) do
       %Exoplanet.Post{
         id: "1",
         feed_url: "https://example.com/feed",
@@ -351,6 +351,22 @@ defmodule Exoplanet.FiltersTest do
       assert String.ends_with?(result.summary, "…")
       prefix = String.replace_trailing(result.summary, "…", "") |> String.trim_trailing()
       assert prefix == "" or Regex.match?(~r/^\w+( \w+)*$/, prefix)
+    end
+
+    test "truncates multi-byte UTF-8 content at correct grapheme boundary" do
+      filters = %{@excerpt_filters | excerpt_length: 11}
+      post = long_post("<p>你好 abc def ghi</p>", nil)
+      [result] = Filters.apply([post], filters)
+      assert String.length(result.summary) <= 11
+      assert String.ends_with?(result.summary, "…")
+      # Verify break occurred at a whitespace position — prefix must end at
+      # a word boundary, not mid-word.
+      prefix = String.replace_trailing(result.summary, "…", "") |> String.trim_trailing()
+
+      # Expected: "你好 abc" (or shorter), not "你好 abc def" (over budget) or "你" (no whitespace break)
+      refute String.ends_with?(prefix, "d")
+      refute String.ends_with?(prefix, "de")
+      refute String.ends_with?(prefix, "def")
     end
   end
 end

@@ -106,7 +106,7 @@ defmodule Exoplanet.Filters do
 
       truncated =
         case Regex.run(~r/\s+\S*\z/, head, return: :index) do
-          [{idx, _len}] -> String.slice(head, 0, idx)
+          [{idx, _len}] -> binary_part(head, 0, idx)
           _ -> head
         end
         |> String.trim_trailing()
