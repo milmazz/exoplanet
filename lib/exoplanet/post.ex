@@ -12,7 +12,9 @@ defmodule Exoplanet.Post do
           title: String.t(),
           body: String.t(),
           categories: [String.t()] | nil,
-          published: NaiveDateTime.t()
+          published: NaiveDateTime.t() | nil,
+          updated: NaiveDateTime.t() | nil,
+          summary: String.t() | nil
         }
   @enforce_keys [:id, :feed_url, :authors, :title, :body, :published]
   defstruct [:id, :feed_url, :authors, :title, :body, :categories, :published, :updated, :summary]
