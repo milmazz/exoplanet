@@ -154,6 +154,32 @@ defmodule ExoplanetTest do
     assert log =~ "something went wrong while parsing feed"
   end
 
+  test "success: parses rss feeds without version attribute" do
+    Req.Test.stub(Exoplanet.Parser, fn conn ->
+      Req.Test.html(conn, feed(:rss_no_version))
+    end)
+
+    sources = %{"https://example.com/feed.rss" => %{name: "Author"}}
+    config = build_config(sources: sources)
+    [%Exoplanet.Post{} = post] = Exoplanet.build(config)
+
+    assert post.title == "Post Without Version"
+    assert post.id == "https://example.com/post-1"
+  end
+
+  test "success: parses rss 1.0 (rdf) feeds" do
+    Req.Test.stub(Exoplanet.Parser, fn conn ->
+      Req.Test.html(conn, feed(:rss1))
+    end)
+
+    sources = %{"https://example.com/rss1.rdf" => %{name: "Author"}}
+    config = build_config(sources: sources)
+    [%Exoplanet.Post{} = post] = Exoplanet.build(config)
+
+    assert post.title == "RSS 1.0 Post"
+    assert post.id == "https://example.com/rss1-post"
+  end
+
   test "error: emit logs when cannot parse a rss feed" do
     Req.Test.stub(Exoplanet.Parser, fn conn ->
       data = """
@@ -297,6 +323,49 @@ defmodule ExoplanetTest do
         <content>Content here</content>
       </entry>
     </feed>
+    """
+  end
+
+  defp feed(:rss_no_version) do
+    """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <rss xmlns:dc="http://purl.org/dc/elements/1.1/">
+      <channel>
+        <title>Example</title>
+        <link>https://example.com</link>
+        <item>
+          <title>Post Without Version</title>
+          <link>https://example.com/post-1</link>
+          <pubDate>Mon, 14 Dec 2020 00:00:00 +0000</pubDate>
+          <description>Content here</description>
+        </item>
+      </channel>
+    </rss>
+    """
+  end
+
+  defp feed(:rss1) do
+    """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+             xmlns="http://purl.org/rss/1.0/"
+             xmlns:dc="http://purl.org/dc/elements/1.1/">
+      <channel rdf:about="https://example.com/rss1.rdf">
+        <title>RSS 1.0 Feed</title>
+        <link>https://example.com</link>
+        <items>
+          <rdf:Seq>
+            <rdf:li rdf:resource="https://example.com/rss1-post"/>
+          </rdf:Seq>
+        </items>
+      </channel>
+      <item rdf:about="https://example.com/rss1-post">
+        <title>RSS 1.0 Post</title>
+        <link>https://example.com/rss1-post</link>
+        <description>RSS 1.0 content</description>
+        <dc:date>2024-01-01T00:00:00Z</dc:date>
+      </item>
+    </rdf:RDF>
     """
   end
 end

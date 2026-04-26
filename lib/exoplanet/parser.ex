@@ -24,7 +24,7 @@ defmodule Exoplanet.Parser do
 
       body ->
         items =
-          if String.contains?(body, "<rss version="),
+          if rss_body?(body),
             do: parse_rss(url, body, name),
             else: parse_atom(url, body, name)
 
@@ -157,6 +157,12 @@ defmodule Exoplanet.Parser do
 
   defp prepend_if(list, condition, item) do
     if condition, do: [item | list], else: list
+  end
+
+  # RSS 2.0 uses <rss ...>, RSS 1.0 uses <rdf:RDF ...>. Both need parse_rss.
+  # Atom uses <feed ...>. Anything else falls through to parse_atom and may fail.
+  defp rss_body?(body) do
+    String.contains?(body, "<rss") or String.contains?(body, "<rdf:RDF")
   end
 
   @doc false
