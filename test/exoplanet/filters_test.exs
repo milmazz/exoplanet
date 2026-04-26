@@ -135,4 +135,98 @@ defmodule Exoplanet.FiltersTest do
       assert Filters.apply([keep, drop_no_match, drop_blocked], filters) == [keep]
     end
   end
+
+  describe "apply/2 — strip_images" do
+    @strip %{
+      allow_categories: [],
+      block_categories: [],
+      strip_images: true,
+      excerpt_length: nil
+    }
+
+    test "replaces <img alt=\"X\" src=\"Y\"> with <a href=\"Y\">X</a> in body" do
+      post = %Exoplanet.Post{
+        id: "1",
+        feed_url: "https://example.com/feed",
+        authors: ["Alice"],
+        title: "T",
+        body: ~s(<p>before <img alt="cat" src="https://i.example/cat.png"> after</p>),
+        categories: nil,
+        published: nil,
+        summary: nil
+      }
+
+      [result] = Filters.apply([post], @strip)
+      assert result.body =~ ~s(<a href="https://i.example/cat.png">cat</a>)
+      refute result.body =~ "<img"
+    end
+
+    test "drops images that have no alt attribute" do
+      post = %Exoplanet.Post{
+        id: "1",
+        feed_url: "https://example.com/feed",
+        authors: ["Alice"],
+        title: "T",
+        body: ~s(<p>before<img src="https://i.example/cat.png">after</p>),
+        categories: nil,
+        published: nil,
+        summary: nil
+      }
+
+      [result] = Filters.apply([post], @strip)
+      refute result.body =~ "<img"
+      refute result.body =~ "<a href"
+    end
+
+    test "image with no src renders alt as plain text" do
+      post = %Exoplanet.Post{
+        id: "1",
+        feed_url: "https://example.com/feed",
+        authors: ["Alice"],
+        title: "T",
+        body: ~s(<p>before <img alt="logo"> after</p>),
+        categories: nil,
+        published: nil,
+        summary: nil
+      }
+
+      [result] = Filters.apply([post], @strip)
+      refute result.body =~ "<img"
+      refute result.body =~ "<a "
+      assert result.body =~ "logo"
+    end
+
+    test "applies the same transformation to summary when present" do
+      post = %Exoplanet.Post{
+        id: "1",
+        feed_url: "https://example.com/feed",
+        authors: ["Alice"],
+        title: "T",
+        body: "<p>body</p>",
+        categories: nil,
+        published: nil,
+        summary: ~s(<p><img alt="x" src="https://e/x.png"></p>)
+      }
+
+      [result] = Filters.apply([post], @strip)
+      assert result.summary =~ ~s(<a href="https://e/x.png">x</a>)
+    end
+
+    test "strip_images: false leaves images intact" do
+      post = %Exoplanet.Post{
+        id: "1",
+        feed_url: "https://example.com/feed",
+        authors: ["Alice"],
+        title: "T",
+        body: ~s(<p><img alt="x" src="https://e/x.png"></p>),
+        categories: nil,
+        published: nil,
+        summary: nil
+      }
+
+      filters = %{@strip | strip_images: false}
+      [result] = Filters.apply([post], filters)
+      assert result.body =~ "<img"
+    end
+  end
 end

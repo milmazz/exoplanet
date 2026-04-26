@@ -41,7 +41,58 @@ defmodule Exoplanet.Filters do
   def apply(posts, filters) do
     allow_lower = Enum.map(filters.allow_categories, &String.downcase/1)
     block_lower = Enum.map(filters.block_categories, &String.downcase/1)
-    Enum.filter(posts, &keep?(&1, allow_lower, block_lower))
+
+    posts
+    |> Enum.filter(&keep?(&1, allow_lower, block_lower))
+    |> Enum.map(&transform(&1, filters))
+  end
+
+  defp transform(post, %{strip_images: true}) do
+    post
+    |> Map.update!(:body, &maybe_strip_images/1)
+    |> Map.update!(:summary, &maybe_strip_images/1)
+  end
+
+  defp transform(post, _filters), do: post
+
+  defp maybe_strip_images(nil), do: nil
+  defp maybe_strip_images(""), do: ""
+
+  defp maybe_strip_images(html) when is_binary(html) do
+    html
+    |> LazyHTML.from_fragment()
+    |> LazyHTML.to_tree()
+    |> strip_images_tree()
+    |> LazyHTML.from_tree()
+    |> LazyHTML.to_html()
+  end
+
+  defp strip_images_tree(tree) when is_list(tree) do
+    Enum.flat_map(tree, &strip_images_node/1)
+  end
+
+  defp strip_images_node({"img", attrs, _children}) do
+    alt = attr_value(attrs, "alt")
+    src = attr_value(attrs, "src")
+    image_replacement(alt, src)
+  end
+
+  defp strip_images_node({tag, attrs, children}) when is_binary(tag) do
+    [{tag, attrs, strip_images_tree(children)}]
+  end
+
+  defp strip_images_node(other), do: [other]
+
+  # Drop the image entirely when there's no alt text.
+  defp image_replacement(nil, _src), do: []
+  defp image_replacement("", _src), do: []
+  # Plain text only when there's no src.
+  defp image_replacement(alt, nil), do: [alt]
+  # Hyperlink with alt text when both are present.
+  defp image_replacement(alt, src), do: [{"a", [{"href", src}], [alt]}]
+
+  defp attr_value(attrs, name) do
+    Enum.find_value(attrs, fn {k, v} -> if k == name, do: v end)
   end
 
   defp keep?(post, allow_lower, block_lower) do
