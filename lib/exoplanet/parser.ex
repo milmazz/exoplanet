@@ -16,19 +16,23 @@ defmodule Exoplanet.Parser do
     end)
   end
 
-  def parse({url, %{name: name}}, config) do
-    # TODO: Apply filters (e.g., remove images from posts)
+  def parse({url, %{name: name} = attrs}, config) do
     case fetch_body(url, config) do
       nil ->
         []
 
       body ->
-        items =
+        raw_items =
           if rss_body?(body),
             do: parse_rss(url, body, name),
             else: parse_atom(url, body, name)
 
-        Enum.take(items, config.new_feed_items)
+        filters = Exoplanet.Filters.merge(config.default_filters, attrs[:filters])
+
+        raw_items
+        |> Enum.map(fn {post_attrs, content} -> Exoplanet.Post.build(post_attrs, content) end)
+        |> Exoplanet.Filters.apply(filters)
+        |> Enum.take(config.new_feed_items)
     end
   end
 
