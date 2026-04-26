@@ -16,7 +16,7 @@ defmodule Exoplanet.Parser do
     end)
   end
 
-  def parse({url, %{name: name} = _attrs}, config) do
+  def parse({url, %{name: name}}, config) do
     # TODO: Apply filters (e.g., remove images from posts)
     case fetch_body(url, config) do
       nil ->
@@ -169,34 +169,25 @@ defmodule Exoplanet.Parser do
   def parse_rss(url, body, name) do
     case FastRSS.parse_rss(body) do
       {:ok, %{"items" => items}} ->
-        parsed_items =
-          Enum.map(items, fn item ->
-            title = item["title"]
-            content = item["description"]
-            authors = List.wrap(item["author"] || name)
+        Enum.map(items, fn item ->
+          title = item["title"]
+          content = item["description"]
+          authors = List.wrap(item["author"] || name)
+          categories = (item["categories"] || []) |> Enum.map(& &1["name"]) |> normalize_categories()
+          id = item["link"] || get_in(item, ["guid", "value"])
+          published = item["pub_date"] && Exoplanet.DateTimeParser.parse!(item["pub_date"])
 
-            categories =
-              case Enum.map(item["categories"] || [], & &1["name"]) do
-                [] -> nil
-                cats -> cats
-              end
+          attrs = %{
+            feed_url: url,
+            authors: authors,
+            title: title,
+            categories: categories,
+            id: id,
+            published: published
+          }
 
-            id = item["link"] || get_in(item, ["guid", "value"])
-            published = item["pub_date"] && Exoplanet.DateTimeParser.parse!(item["pub_date"])
-
-            attrs = %{
-              feed_url: url,
-              authors: authors,
-              title: title,
-              categories: categories,
-              id: id,
-              published: published
-            }
-
-            {attrs, content}
-          end)
-
-        parsed_items
+          {attrs, content}
+        end)
 
       {:error, reason} ->
         Logger.error("something went wrong while parsing feed #{url}, reason: #{inspect(reason)}")
@@ -208,45 +199,37 @@ defmodule Exoplanet.Parser do
   def parse_atom(url, body, name) do
     case FastRSS.parse_atom(body) do
       {:ok, %{"entries" => entries}} ->
-        parsed_entries =
-          Enum.map(entries, fn entry ->
-            title = get_in(entry, ["title", "value"])
-            content = get_in(entry, ["content", "value"])
-            authors = get_in(entry, ["authors", Access.all(), "name"])
+        Enum.map(entries, fn entry ->
+          title = get_in(entry, ["title", "value"])
+          content = get_in(entry, ["content", "value"])
+          authors = get_in(entry, ["authors", Access.all(), "name"])
+          categories = get_in(entry, ["categories", Access.all(), "term"]) |> normalize_categories()
+          id = Map.get(entry, "id")
+          published = entry["published"] && NaiveDateTime.from_iso8601!(entry["published"])
+          updated = entry["updated"] && NaiveDateTime.from_iso8601!(entry["updated"])
+          summary = get_in(entry, ["summary", "value"])
+          authors = if authors == [], do: [name], else: authors
 
-            categories =
-              case get_in(entry, ["categories", Access.all(), "term"]) do
-                [] -> nil
-                cats -> cats
-              end
+          attrs = %{
+            feed_url: url,
+            authors: authors,
+            title: title,
+            categories: categories,
+            id: id,
+            published: published || updated,
+            updated: updated,
+            summary: summary
+          }
 
-            id = Map.get(entry, "id")
-            published = entry["published"] && NaiveDateTime.from_iso8601!(entry["published"])
-            updated = entry["updated"] && NaiveDateTime.from_iso8601!(entry["updated"])
-            summary = get_in(entry, ["summary", "value"])
-
-            authors = if authors == [], do: [name], else: authors
-
-            attrs = %{
-              feed_url: url,
-              authors: authors,
-              title: title,
-              categories: categories,
-              id: id,
-              published: published || updated,
-              updated: updated,
-              summary: summary
-            }
-
-            {attrs, content}
-          end)
-
-        parsed_entries
+          {attrs, content}
+        end)
 
       {:error, reason} ->
         Logger.error("something went wrong while parsing feed #{url}, reason: #{inspect(reason)}")
-
         []
     end
   end
+
+  defp normalize_categories([]), do: nil
+  defp normalize_categories(cats), do: cats
 end
