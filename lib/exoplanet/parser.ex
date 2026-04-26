@@ -173,7 +173,10 @@ defmodule Exoplanet.Parser do
           title = item["title"]
           content = item["description"]
           authors = List.wrap(item["author"] || name)
-          categories = (item["categories"] || []) |> Enum.map(& &1["name"]) |> normalize_categories()
+
+          categories =
+            (item["categories"] || []) |> Enum.map(& &1["name"]) |> normalize_categories()
+
           id = item["link"] || get_in(item, ["guid", "value"])
           published = item["pub_date"] && Exoplanet.DateTimeParser.parse!(item["pub_date"])
 
@@ -203,7 +206,10 @@ defmodule Exoplanet.Parser do
           title = get_in(entry, ["title", "value"])
           content = get_in(entry, ["content", "value"])
           authors = get_in(entry, ["authors", Access.all(), "name"])
-          categories = get_in(entry, ["categories", Access.all(), "term"]) |> normalize_categories()
+
+          categories =
+            get_in(entry, ["categories", Access.all(), "term"]) |> normalize_categories()
+
           id = Map.get(entry, "id")
           published = entry["published"] && NaiveDateTime.from_iso8601!(entry["published"])
           updated = entry["updated"] && NaiveDateTime.from_iso8601!(entry["updated"])
