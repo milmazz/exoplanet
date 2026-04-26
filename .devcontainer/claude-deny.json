@@ -1,8 +1,0 @@
-{
-  "deny": [
-    "mise.toml",
-    ".env.devcontainer",
-    ".devcontainer/scripts/init-network.sh",
-    ".devcontainer/scripts/entrypoint.sh"
-  ]
-}
