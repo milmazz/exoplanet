@@ -61,7 +61,7 @@ defmodule Exoplanet.FiltersTest do
   end
 
   describe "apply/2 — category filtering" do
-    defp post(opts \\ []) do
+    defp post(opts) do
       %Exoplanet.Post{
         id: "1",
         feed_url: "https://example.com/feed",

@@ -39,27 +39,27 @@ defmodule Exoplanet.Filters do
   """
   @spec apply([Exoplanet.Post.t()], t()) :: [Exoplanet.Post.t()]
   def apply(posts, filters) do
-    Enum.filter(posts, &keep?(&1, filters))
+    allow_lower = Enum.map(filters.allow_categories, &String.downcase/1)
+    block_lower = Enum.map(filters.block_categories, &String.downcase/1)
+    Enum.filter(posts, &keep?(&1, allow_lower, block_lower))
   end
 
-  defp keep?(post, filters) do
-    passes_allowlist?(post.categories, filters.allow_categories) and
-      passes_blocklist?(post.categories, filters.block_categories)
+  defp keep?(post, allow_lower, block_lower) do
+    passes_allowlist?(post.categories, allow_lower) and
+      passes_blocklist?(post.categories, block_lower)
   end
 
   defp passes_allowlist?(_categories, []), do: true
   defp passes_allowlist?(nil, _allow), do: false
 
-  defp passes_allowlist?(categories, allow) do
-    allow_lower = Enum.map(allow, &String.downcase/1)
+  defp passes_allowlist?(categories, allow_lower) do
     Enum.any?(categories, &(String.downcase(&1) in allow_lower))
   end
 
   defp passes_blocklist?(_categories, []), do: true
   defp passes_blocklist?(nil, _block), do: true
 
-  defp passes_blocklist?(categories, block) do
-    block_lower = Enum.map(block, &String.downcase/1)
+  defp passes_blocklist?(categories, block_lower) do
     not Enum.any?(categories, &(String.downcase(&1) in block_lower))
   end
 end
