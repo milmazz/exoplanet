@@ -228,5 +228,59 @@ defmodule Exoplanet.FiltersTest do
       [result] = Filters.apply([post], filters)
       assert result.body =~ "<img"
     end
+
+    test "leaves nil body and summary alone" do
+      post = %Exoplanet.Post{
+        id: "1",
+        feed_url: "https://example.com/feed",
+        authors: ["Alice"],
+        title: "T",
+        body: nil,
+        categories: nil,
+        published: nil,
+        summary: nil
+      }
+
+      [result] = Filters.apply([post], @strip)
+      assert result.body == nil
+      assert result.summary == nil
+    end
+
+    test "preserves image-free body byte-identical" do
+      html = "<p>plain & simple <br> text</p>"
+
+      post = %Exoplanet.Post{
+        id: "1",
+        feed_url: "https://example.com/feed",
+        authors: ["Alice"],
+        title: "T",
+        body: html,
+        categories: nil,
+        published: nil,
+        summary: nil
+      }
+
+      [result] = Filters.apply([post], @strip)
+      assert result.body == html
+    end
+
+    test "rewrites images nested inside other containers" do
+      post = %Exoplanet.Post{
+        id: "1",
+        feed_url: "https://example.com/feed",
+        authors: ["Alice"],
+        title: "T",
+        body: ~s(<div><figure><img alt="x" src="https://e/x.png"></figure></div>),
+        categories: nil,
+        published: nil,
+        summary: nil
+      }
+
+      [result] = Filters.apply([post], @strip)
+      assert result.body =~ ~s(<a href="https://e/x.png">x</a>)
+      refute result.body =~ "<img"
+      assert result.body =~ "<figure"
+      assert result.body =~ "<div"
+    end
   end
 end

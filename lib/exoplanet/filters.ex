@@ -59,12 +59,16 @@ defmodule Exoplanet.Filters do
   defp maybe_strip_images(""), do: ""
 
   defp maybe_strip_images(html) when is_binary(html) do
-    html
-    |> LazyHTML.from_fragment()
-    |> LazyHTML.to_tree()
-    |> strip_images_tree()
-    |> LazyHTML.from_tree()
-    |> LazyHTML.to_html()
+    if String.contains?(html, "<img") do
+      html
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.to_tree()
+      |> strip_images_tree()
+      |> LazyHTML.from_tree()
+      |> LazyHTML.to_html()
+    else
+      html
+    end
   end
 
   defp strip_images_tree(tree) when is_list(tree) do
@@ -83,7 +87,7 @@ defmodule Exoplanet.Filters do
 
   defp strip_images_node(other), do: [other]
 
-  # Drop the image entirely when there's no alt text.
+  # alt="" is HTML5 for "decorative image" — drop it the same as missing alt.
   defp image_replacement(nil, _src), do: []
   defp image_replacement("", _src), do: []
   # Plain text only when there's no src.
