@@ -368,5 +368,20 @@ defmodule Exoplanet.FiltersTest do
       refute String.ends_with?(prefix, "de")
       refute String.ends_with?(prefix, "def")
     end
+
+    test "html-escapes the generated excerpt so consumers can render with raw/1" do
+      filters = %{@excerpt_filters | excerpt_length: 200}
+
+      body = ~s(<p>Code example: <pre>&lt;div class="x"&gt;hello&lt;/div&gt;</pre></p>)
+      post = long_post(body, nil)
+      [result] = Filters.apply([post], filters)
+
+      # `LazyHTML.text/1` decodes `&lt;` / `&gt;` back to `<` / `>` — those
+      # would break the consumer's layout if not re-escaped before rendering.
+      refute result.summary =~ "<div"
+      refute result.summary =~ "</div>"
+      assert result.summary =~ "&lt;div"
+      assert result.summary =~ "&lt;/div&gt;"
+    end
   end
 end
