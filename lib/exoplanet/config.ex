@@ -1,16 +1,25 @@
 defmodule Exoplanet.Config do
   @moduledoc """
-  Exoplanet configuration
+  Exoplanet configuration.
 
-  In this section we expect the following attributees:
+  Required keys:
 
-  * `name` - your planet's name
-  * `link` - link to the main page
-  * `owner_name` - your name
-  * `owner_email` - your e-mail address
-  * `about` - information about your Planet
-  * `feed_timeout` - time in seconds the request to any given feed should timeout
-  * `related_sites` - map of links to related sites, like other Planets or Feed Aggregators
+  * `name` — your planet's name
+  * `link` — link to the main page
+  * `owner_name` — your name
+  * `owner_email` — your e-mail address
+  * `about` — information about your Planet (Markdown)
+  * `sources` — map of `feed_url => %{name: ...}` (plus optional per-feed keys)
+
+  Optional keys (with defaults):
+
+  * `code_of_conduct` (`""`) — Markdown shown on a code-of-conduct page
+  * `activity_threshold` (`90`) — days before a feed is considered inactive
+  * `new_feed_items` (`4`) — max posts kept per feed per rebuild
+  * `feed_timeout` (`20`) — per-feed HTTP timeout in seconds
+  * `items` (`60`) — total post cap across all feeds
+  * `related_sites` (`%{}`) — map of links to related sites
+  * `default_filters` — global content filters (see `Exoplanet.Filters`)
   """
 
   @type t :: %__MODULE__{
@@ -21,8 +30,10 @@ defmodule Exoplanet.Config do
           about: String.t(),
           code_of_conduct: String.t(),
           sources: map(),
+          activity_threshold: pos_integer(),
           new_feed_items: pos_integer(),
           feed_timeout: pos_integer(),
+          items: pos_integer(),
           related_sites: map(),
           default_filters: Exoplanet.Filters.t()
         }
@@ -34,16 +45,12 @@ defmodule Exoplanet.Config do
     :owner_name,
     :owner_email,
     :sources,
-    :cache_directory,
-    :output_dir,
     :about,
     code_of_conduct: "",
     activity_threshold: 90,
     new_feed_items: 4,
-    log_level: :debug,
     feed_timeout: 20,
     items: 60,
-    output_theme: "classic_fancy",
     related_sites: %{},
     default_filters: %{
       allow_categories: [],
