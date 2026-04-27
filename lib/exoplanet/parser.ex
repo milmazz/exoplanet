@@ -58,28 +58,19 @@ defmodule Exoplanet.Parser do
 
   defp cache_adapter, do: Application.get_env(:exoplanet, :cache_adapter)
 
-  defp maybe_notify_success(url, status) do
+  defp maybe_notify_success(url, status), do: maybe_call_adapter(:on_success, [url, status])
+
+  defp maybe_notify_error(url, status, reason),
+    do: maybe_call_adapter(:on_error, [url, status, reason])
+
+  defp maybe_call_adapter(callback, args) do
     case cache_adapter() do
       nil ->
         :ok
 
       adapter ->
-        if function_exported?(adapter, :on_success, 2) do
-          adapter.on_success(url, status)
-        end
-
-        :ok
-    end
-  end
-
-  defp maybe_notify_error(url, status, reason) do
-    case cache_adapter() do
-      nil ->
-        :ok
-
-      adapter ->
-        if function_exported?(adapter, :on_error, 3) do
-          adapter.on_error(url, status, reason)
+        if function_exported?(adapter, callback, length(args)) do
+          apply(adapter, callback, args)
         end
 
         :ok
@@ -150,8 +141,7 @@ defmodule Exoplanet.Parser do
     String.contains?(body, "<rss") or String.contains?(body, "<rdf:RDF")
   end
 
-  @doc false
-  def parse_rss(url, body, name) do
+  defp parse_rss(url, body, name) do
     case FastRSS.parse_rss(body) do
       {:ok, %{"items" => items}} ->
         Enum.map(items, fn item ->
@@ -186,8 +176,7 @@ defmodule Exoplanet.Parser do
     end
   end
 
-  @doc false
-  def parse_atom(url, body, name) do
+  defp parse_atom(url, body, name) do
     case FastRSS.parse_atom(body) do
       {:ok, %{"entries" => entries}} ->
         Enum.map(entries, fn entry ->
