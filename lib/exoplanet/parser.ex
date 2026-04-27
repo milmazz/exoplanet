@@ -156,7 +156,10 @@ defmodule Exoplanet.Parser do
       {:ok, %{"items" => items}} ->
         Enum.map(items, fn item ->
           title = item["title"]
-          content = item["description"]
+          # Prefer <content:encoded> (Content RSS module) over <description> —
+          # feeds like Medium put the full HTML article in content:encoded and
+          # leave description short or empty.
+          content = blank_to_nil(item["content"]) || item["description"]
           authors = normalize_authors([item["author"]], name)
 
           categories =

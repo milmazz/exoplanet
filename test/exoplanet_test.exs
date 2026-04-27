@@ -332,6 +332,31 @@ defmodule ExoplanetTest do
       assert post.authors == ["Source Name"]
     end
 
+    test "rss: prefers <content:encoded> over <description> when both are present" do
+      Req.Test.stub(Exoplanet.Parser, fn conn ->
+        Req.Test.html(conn, feed(:rss_with_content_encoded))
+      end)
+
+      sources = %{"https://content-encoded.example/feed" => %{name: "S"}}
+      config = build_config(sources: sources)
+      [%Exoplanet.Post{} = post] = Exoplanet.build(config)
+
+      assert post.body =~ "Full article HTML"
+      refute post.body =~ "Short snippet"
+    end
+
+    test "rss: falls back to <description> when <content:encoded> is absent" do
+      Req.Test.stub(Exoplanet.Parser, fn conn ->
+        Req.Test.html(conn, feed(:rss))
+      end)
+
+      sources = %{"https://www.theerlangelist.com/rss" => %{name: "Saša Jurić"}}
+      config = build_config(sources: sources)
+      [%Exoplanet.Post{} = post] = Exoplanet.build(config)
+
+      assert post.body =~ "<h1>Sequences"
+    end
+
     test "atom: empty <summary> is normalised to nil (so consumers fall back to body)" do
       Req.Test.stub(Exoplanet.Parser, fn conn ->
         Req.Test.html(conn, feed(:atom_empty_summary))
@@ -493,6 +518,24 @@ defmodule ExoplanetTest do
         <dc:date>2024-01-01T00:00:00Z</dc:date>
       </item>
     </rdf:RDF>
+    """
+  end
+
+  defp feed(:rss_with_content_encoded) do
+    """
+    <rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+      <channel>
+        <title>Content Encoded</title>
+        <link>https://content-encoded.example</link>
+        <item>
+          <title>Article With Both Description and Content</title>
+          <link>https://content-encoded.example/post-1</link>
+          <pubDate>Mon, 14 Dec 2020 00:00:00 +0000</pubDate>
+          <description>Short snippet</description>
+          <content:encoded><![CDATA[<p>Full article HTML</p>]]></content:encoded>
+        </item>
+      </channel>
+    </rss>
     """
   end
 
