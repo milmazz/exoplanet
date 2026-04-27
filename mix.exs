@@ -34,9 +34,9 @@ defmodule Exoplanet.MixProject do
       {:req, "~> 0.5"},
       {:fast_rss, "~> 0.5"},
       {:lazy_html, "~> 0.1"},
-      {:nimble_parsec, "~> 1.0", only: [:dev], runtime: false},
+      {:nimble_parsec, "~> 1.0", only: [:dev, :test], runtime: false},
       {:plug, "~> 1.0", only: [:test]},
-      {:ex_doc, "~> 0.34", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.34", only: [:dev, :test], runtime: false}
     ]
   end
 
