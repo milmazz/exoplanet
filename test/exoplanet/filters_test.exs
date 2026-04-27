@@ -369,6 +369,16 @@ defmodule Exoplanet.FiltersTest do
       refute String.ends_with?(prefix, "def")
     end
 
+    test "returns nil summary when body has no extractable text" do
+      filters = %{@excerpt_filters | excerpt_length: 100}
+      # Body with only an image and no text content — html_to_text yields "".
+      post = long_post(~s(<p><img src="https://e/x.png"></p>), nil)
+      [result] = Filters.apply([post], filters)
+
+      # nil (not "") so consumers using `summary || body` fall back to body.
+      assert result.summary == nil
+    end
+
     test "html-escapes the generated excerpt so consumers can render with raw/1" do
       filters = %{@excerpt_filters | excerpt_length: 200}
 

@@ -307,6 +307,45 @@ defmodule ExoplanetTest do
     end
   end
 
+  describe "blank input handling" do
+    test "rss: blank <author> falls back to the source's configured name" do
+      Req.Test.stub(Exoplanet.Parser, fn conn ->
+        Req.Test.html(conn, feed(:rss_blank_author))
+      end)
+
+      sources = %{"https://blank-author.example/feed" => %{name: "Source Name"}}
+      config = build_config(sources: sources)
+      [%Exoplanet.Post{} = post] = Exoplanet.build(config)
+
+      assert post.authors == ["Source Name"]
+    end
+
+    test "atom: every blank <author><name>...</name></author> falls back to the source name" do
+      Req.Test.stub(Exoplanet.Parser, fn conn ->
+        Req.Test.html(conn, feed(:atom_blank_author))
+      end)
+
+      sources = %{"https://blank-author.example/feed.xml" => %{name: "Source Name"}}
+      config = build_config(sources: sources)
+      [%Exoplanet.Post{} = post] = Exoplanet.build(config)
+
+      assert post.authors == ["Source Name"]
+    end
+
+    test "atom: empty <summary> is normalised to nil (so consumers fall back to body)" do
+      Req.Test.stub(Exoplanet.Parser, fn conn ->
+        Req.Test.html(conn, feed(:atom_empty_summary))
+      end)
+
+      sources = %{"https://empty-summary.example/feed.xml" => %{name: "S"}}
+      config = build_config(sources: sources)
+      [%Exoplanet.Post{} = post] = Exoplanet.build(config)
+
+      assert post.summary == nil
+      assert post.body =~ "Body content"
+    end
+  end
+
   defp build_config(opts) do
     default_opts = [
       owner_name: "John Doe",
@@ -454,6 +493,64 @@ defmodule ExoplanetTest do
         <dc:date>2024-01-01T00:00:00Z</dc:date>
       </item>
     </rdf:RDF>
+    """
+  end
+
+  defp feed(:rss_blank_author) do
+    """
+    <rss version="2.0">
+      <channel>
+        <title>Blank Author</title>
+        <link>https://blank-author.example</link>
+        <item>
+          <title>Post With Blank Author</title>
+          <link>https://blank-author.example/post-1</link>
+          <pubDate>Mon, 14 Dec 2020 00:00:00 +0000</pubDate>
+          <author>   </author>
+          <description>Body</description>
+        </item>
+      </channel>
+    </rss>
+    """
+  end
+
+  defp feed(:atom_blank_author) do
+    """
+    <?xml version="1.0" encoding="utf-8"?>
+    <feed xmlns="http://www.w3.org/2005/Atom">
+      <title>Blank Author</title>
+      <id>tag:blank-author</id>
+      <updated>2024-01-01T00:00:00Z</updated>
+      <entry>
+        <id>https://blank-author.example/post-1</id>
+        <title>Post With Blank Author Names</title>
+        <updated>2024-01-01T00:00:00Z</updated>
+        <published>2024-01-01T00:00:00Z</published>
+        <author><name></name></author>
+        <author><name>   </name></author>
+        <content type="html">Body</content>
+      </entry>
+    </feed>
+    """
+  end
+
+  defp feed(:atom_empty_summary) do
+    """
+    <?xml version="1.0" encoding="utf-8"?>
+    <feed xmlns="http://www.w3.org/2005/Atom">
+      <title>Empty Summary</title>
+      <id>tag:empty-summary</id>
+      <updated>2024-01-01T00:00:00Z</updated>
+      <entry>
+        <id>https://empty-summary.example/post-1</id>
+        <title>Post With Empty Summary</title>
+        <updated>2024-01-01T00:00:00Z</updated>
+        <published>2024-01-01T00:00:00Z</published>
+        <author><name>Alice</name></author>
+        <summary></summary>
+        <content type="html">Body content here</content>
+      </entry>
+    </feed>
     """
   end
 end

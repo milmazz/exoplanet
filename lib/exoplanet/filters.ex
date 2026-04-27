@@ -71,14 +71,18 @@ defmodule Exoplanet.Filters do
   # from the body and HTML-escape it: the source HTML's text content may contain
   # decoded `<` / `&` characters (e.g. from a `<pre>` code sample) that would
   # otherwise break the consumer's layout when rendered raw.
+  #
+  # When no extractable text is available (e.g. body is only images), return
+  # `nil` so consumers fall back to the original body via `summary || body`.
+  # `""` would mask the body in `||` because empty strings are truthy in Elixir.
   defp compute_excerpt(summary, body, n) do
     source = summary || body || ""
     text = html_to_text(source)
 
-    if summary && String.length(text) <= n do
-      summary
-    else
-      text |> truncate(n) |> LazyHTML.html_escape()
+    cond do
+      summary && String.length(text) <= n -> summary
+      text == "" -> nil
+      true -> text |> truncate(n) |> LazyHTML.html_escape()
     end
   end
 
