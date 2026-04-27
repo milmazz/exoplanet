@@ -23,8 +23,9 @@ defmodule Exoplanet.ConfigTest do
              }
     end
 
-    test "from_file/1 loads default_filters when present in the config file" do
-      path = Path.join(System.tmp_dir!(), "exoplanet_test_config.exs")
+    @tag :tmp_dir
+    test "from_file/1 loads default_filters when present in the config file", %{tmp_dir: tmp_dir} do
+      path = Path.join(tmp_dir, "config.exs")
 
       File.write!(path, """
       %{
@@ -51,8 +52,6 @@ defmodule Exoplanet.ConfigTest do
                strip_images: true,
                excerpt_length: 500
              }
-
-      File.rm!(path)
     end
   end
 end

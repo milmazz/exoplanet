@@ -15,9 +15,24 @@ defmodule Exoplanet do
   @doc """
   Returns a list of ordered post based on their publication date
   """
-  def build(%Exoplanet.Config{} = config) do
-    config
-    |> Exoplanet.Parser.parse()
+  def build(%Exoplanet.Config{sources: sources, default_filters: defaults} = config) do
+    sources
+    |> Task.async_stream(
+      fn {_url, attrs} = source ->
+        filters = Exoplanet.Filters.merge(defaults, attrs[:filters])
+
+        source
+        |> Exoplanet.Parser.parse(config)
+        |> Exoplanet.Filters.apply(filters)
+        |> Enum.take(config.new_feed_items)
+      end,
+      ordered: false,
+      timeout: to_timeout(second: config.feed_timeout)
+    )
+    |> Stream.flat_map(fn
+      {:ok, posts} -> posts
+      _ -> []
+    end)
     |> Enum.sort_by(&(&1.published || ~N[0000-01-01 00:00:00]), {:desc, NaiveDateTime})
     |> Enum.take(config.items)
   end

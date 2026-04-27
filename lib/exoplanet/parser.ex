@@ -2,21 +2,7 @@ defmodule Exoplanet.Parser do
   @moduledoc false
   require Logger
 
-  def parse(%Exoplanet.Config{sources: sources} = config) do
-    sources
-    |> Task.async_stream(__MODULE__, :parse, [config],
-      ordered: false,
-      timeout: to_timeout(second: config.feed_timeout)
-    )
-    |> Stream.flat_map(fn result ->
-      case result do
-        {:ok, posts} -> posts
-        _ -> []
-      end
-    end)
-  end
-
-  def parse({url, %{name: name} = attrs}, config) do
+  def parse({url, %{name: name}}, config) do
     case fetch_body(url, config) do
       nil ->
         []
@@ -27,12 +13,7 @@ defmodule Exoplanet.Parser do
             do: parse_rss(url, body, name),
             else: parse_atom(url, body, name)
 
-        filters = Exoplanet.Filters.merge(config.default_filters, attrs[:filters])
-
-        raw_items
-        |> Enum.map(fn {post_attrs, content} -> Exoplanet.Post.build(post_attrs, content) end)
-        |> Exoplanet.Filters.apply(filters)
-        |> Enum.take(config.new_feed_items)
+        Enum.map(raw_items, fn {attrs, content} -> Exoplanet.Post.build(attrs, content) end)
     end
   end
 

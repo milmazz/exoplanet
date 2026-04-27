@@ -21,12 +21,11 @@ defmodule Exoplanet.Filters do
   """
   @spec merge(t(), map() | nil) :: t()
   def merge(defaults, nil), do: defaults
-  def merge(defaults, per_feed) when map_size(per_feed) == 0, do: defaults
 
   def merge(defaults, per_feed) do
-    Enum.reduce(per_feed, defaults, fn
-      {_key, nil}, acc -> acc
-      {key, value}, acc -> Map.put(acc, key, value)
+    Map.merge(defaults, per_feed, fn
+      _k, v1, nil -> v1
+      _k, _v1, v2 -> v2
     end)
   end
 
