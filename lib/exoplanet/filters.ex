@@ -66,16 +66,19 @@ defmodule Exoplanet.Filters do
 
   defp apply_excerpt(post, _filters), do: post
 
-  # If existing summary is already short enough, keep it. Otherwise build
-  # a truncated summary from the existing summary (preferred) or the body.
+  # If existing summary is already short enough, keep it as-is (preserves the
+  # original HTML markup from the feed). Otherwise generate a truncated summary
+  # from the body and HTML-escape it: the source HTML's text content may contain
+  # decoded `<` / `&` characters (e.g. from a `<pre>` code sample) that would
+  # otherwise break the consumer's layout when rendered raw.
   defp compute_excerpt(summary, body, n) do
     source = summary || body || ""
     text = html_to_text(source)
 
-    if String.length(text) <= n do
-      summary || truncate(text, n)
+    if summary && String.length(text) <= n do
+      summary
     else
-      truncate(text, n)
+      text |> truncate(n) |> LazyHTML.html_escape()
     end
   end
 
