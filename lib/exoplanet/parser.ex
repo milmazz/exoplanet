@@ -2,33 +2,18 @@ defmodule Exoplanet.Parser do
   @moduledoc false
   require Logger
 
-  def parse(%Exoplanet.Config{sources: sources} = config) do
-    sources
-    |> Task.async_stream(__MODULE__, :parse, [config],
-      ordered: false,
-      timeout: to_timeout(second: config.feed_timeout)
-    )
-    |> Stream.flat_map(fn result ->
-      case result do
-        {:ok, posts} -> posts
-        _ -> []
-      end
-    end)
-  end
-
   def parse({url, %{name: name}}, config) do
-    # TODO: Apply filters (e.g., remove images from posts)
     case fetch_body(url, config) do
       nil ->
         []
 
       body ->
-        items =
+        raw_items =
           if rss_body?(body),
             do: parse_rss(url, body, name),
             else: parse_atom(url, body, name)
 
-        Enum.take(items, config.new_feed_items)
+        Enum.map(raw_items, fn {attrs, content} -> Exoplanet.Post.build(attrs, content) end)
     end
   end
 

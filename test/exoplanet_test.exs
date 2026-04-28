@@ -219,6 +219,94 @@ defmodule ExoplanetTest do
     assert log =~ "something went wrong while retrieving URL"
   end
 
+  describe "filters integration" do
+    test "filters apply per-source before Enum.take(new_feed_items)" do
+      url = "https://filters-test.example/feed.xml"
+
+      atom = """
+      <?xml version="1.0" encoding="utf-8"?>
+      <feed xmlns="http://www.w3.org/2005/Atom">
+        <title>F</title>
+        <id>tag:filters-test</id>
+        <updated>2026-01-01T00:00:00Z</updated>
+        <entry>
+          <id>1</id><title>One</title>
+          <updated>2026-01-01T00:00:00Z</updated>
+          <published>2026-01-01T00:00:00Z</published>
+          <content type="html">a</content>
+          <category term="elixir"/>
+        </entry>
+        <entry>
+          <id>2</id><title>Two</title>
+          <updated>2026-01-02T00:00:00Z</updated>
+          <published>2026-01-02T00:00:00Z</published>
+          <content type="html">b</content>
+          <category term="elixir"/>
+        </entry>
+        <entry>
+          <id>3</id><title>Three</title>
+          <updated>2026-01-03T00:00:00Z</updated>
+          <published>2026-01-03T00:00:00Z</published>
+          <content type="html">c</content>
+          <category term="elixir"/>
+        </entry>
+        <entry>
+          <id>4</id><title>Four</title>
+          <updated>2026-01-04T00:00:00Z</updated>
+          <published>2026-01-04T00:00:00Z</published>
+          <content type="html">d</content>
+          <category term="personal"/>
+        </entry>
+        <entry>
+          <id>5</id><title>Five</title>
+          <updated>2026-01-05T00:00:00Z</updated>
+          <published>2026-01-05T00:00:00Z</published>
+          <content type="html">e</content>
+          <category term="elixir"/>
+        </entry>
+        <entry>
+          <id>6</id><title>Six</title>
+          <updated>2026-01-06T00:00:00Z</updated>
+          <published>2026-01-06T00:00:00Z</published>
+          <content type="html">f</content>
+          <category term="elixir"/>
+        </entry>
+      </feed>
+      """
+
+      Req.Test.stub(Exoplanet.Parser, fn conn ->
+        Req.Test.text(conn, atom)
+      end)
+
+      config = %Exoplanet.Config{
+        name: "T",
+        link: "https://t.example",
+        owner_name: "T",
+        owner_email: "t@example.com",
+        about: "",
+        sources: %{url => %{name: "F"}},
+        new_feed_items: 4,
+        items: 60,
+        feed_timeout: 5,
+        default_filters: %{
+          allow_categories: ["elixir"],
+          block_categories: [],
+          strip_images: false,
+          excerpt_length: nil
+        }
+      }
+
+      posts = Exoplanet.build(config)
+
+      # 5 entries match the allowlist (1, 2, 3, 5, 6); entry 4 (personal) does not.
+      # If filtering ran AFTER Enum.take(4), we'd take entries 1-4 and then drop
+      # entry 4 → only 3 surviving posts. Filter-before-take yields exactly 4.
+      assert length(posts) == 4
+      titles = Enum.map(posts, & &1.title)
+      refute "Four" in titles
+    end
+  end
+
   defp build_config(opts) do
     default_opts = [
       owner_name: "John Doe",

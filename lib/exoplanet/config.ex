@@ -23,7 +23,8 @@ defmodule Exoplanet.Config do
           sources: map(),
           new_feed_items: pos_integer(),
           feed_timeout: pos_integer(),
-          related_sites: map()
+          related_sites: map(),
+          default_filters: Exoplanet.Filters.t()
         }
 
   @enforce_keys [:name, :link, :owner_name, :owner_email, :sources, :about]
@@ -43,7 +44,13 @@ defmodule Exoplanet.Config do
     feed_timeout: 20,
     items: 60,
     output_theme: "classic_fancy",
-    related_sites: %{}
+    related_sites: %{},
+    default_filters: %{
+      allow_categories: [],
+      block_categories: [],
+      strip_images: false,
+      excerpt_length: nil
+    }
   ]
 
   @doc """
