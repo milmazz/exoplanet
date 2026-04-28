@@ -24,9 +24,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   inside the `sources` map merge with `default_filters`; `allow_categories` and
   `block_categories` replace defaults rather than union, all other keys merge
   field-by-field.
-- `Exoplanet.Parser.parse/2` applies merged filters to each source's posts
-  before truncating to `new_feed_items`.
+- `Exoplanet.build/1` applies merged filters to each source's posts before
+  truncating to `new_feed_items` (filtering happens before the per-feed cap).
 - `:lazy_html` dependency for HTML manipulation in filters.
+
+### Changed
+
+- `Exoplanet.Parser.parse/2` is now purely HTTP fetch + XML parse; it returns
+  built `%Exoplanet.Post{}` structs. Per-source filtering and the `new_feed_items`
+  cap moved to `Exoplanet.build/1`.
 
 ### Fixed
 
@@ -39,6 +45,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is `nil`.
 - Empty `categories` values in both Atom and RSS feeds are normalised to `nil` instead
   of being returned as empty strings or nested lists.
+- Generated excerpts are HTML-escaped before being stored in `summary`, so consumers
+  can render them with `raw/1` without breaking layout. Previously, decoded `<` from
+  `<pre>` code samples would be re-interpreted as real elements.
+- Blank/whitespace-only `<author>` (RSS) and `<author><name></name></author>` (Atom)
+  values now fall back to the source's configured `name`. Previously the empty string
+  bypassed `||` fallbacks because empty strings are truthy in Elixir.
+- Empty `<summary>` elements are normalised to `nil` so consumers' `summary || body`
+  fallback works.
+- RSS `<content:encoded>` (Content RSS module) is now preferred over `<description>`
+  for the post body. Feeds like Medium put the full HTML article in `content:encoded`
+  and leave `description` short or empty.
+
+### Removed
+
+- Vestigial `Exoplanet.Config` fields that were never wired up: `cache_directory`,
+  `output_dir`, `output_theme`, `log_level`. They were carried over from Venus's
+  static-output workflow and never had any effect. Configs that still set these keys
+  will now raise on `Config.from_file/1` — remove them from your config file.
 
 ## [0.2.0] - 2025-04-31
 
