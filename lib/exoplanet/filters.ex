@@ -75,9 +75,11 @@ defmodule Exoplanet.Filters do
   # When no extractable text is available (e.g. body is only images), return
   # `nil` so consumers fall back to the original body via `summary || body`.
   # `""` would mask the body in `||` because empty strings are truthy in Elixir.
+  defp compute_excerpt(summary, _body, n) when is_binary(summary) and byte_size(summary) <= n,
+    do: summary
+
   defp compute_excerpt(summary, body, n) do
-    source = summary || body || ""
-    text = html_to_text(source)
+    text = html_to_text(summary || body || "")
 
     cond do
       summary && String.length(text) <= n -> summary
