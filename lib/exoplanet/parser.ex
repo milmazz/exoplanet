@@ -156,8 +156,11 @@ defmodule Exoplanet.Parser do
       {:ok, %{"items" => items}} ->
         Enum.map(items, fn item ->
           title = item["title"]
-          content = item["description"]
-          authors = List.wrap(item["author"] || name)
+          # Prefer <content:encoded> (Content RSS module) over <description> —
+          # feeds like Medium put the full HTML article in content:encoded and
+          # leave description short or empty.
+          content = blank_to_nil(item["content"]) || item["description"]
+          authors = normalize_authors([item["author"]], name)
 
           categories =
             (item["categories"] || []) |> Enum.map(& &1["name"]) |> normalize_categories()
@@ -190,7 +193,7 @@ defmodule Exoplanet.Parser do
         Enum.map(entries, fn entry ->
           title = get_in(entry, ["title", "value"])
           content = get_in(entry, ["content", "value"])
-          authors = get_in(entry, ["authors", Access.all(), "name"])
+          authors = normalize_authors(get_in(entry, ["authors", Access.all(), "name"]), name)
 
           categories =
             get_in(entry, ["categories", Access.all(), "term"]) |> normalize_categories()
@@ -198,8 +201,7 @@ defmodule Exoplanet.Parser do
           id = Map.get(entry, "id")
           published = entry["published"] && NaiveDateTime.from_iso8601!(entry["published"])
           updated = entry["updated"] && NaiveDateTime.from_iso8601!(entry["updated"])
-          summary = get_in(entry, ["summary", "value"])
-          authors = if authors == [], do: [name], else: authors
+          summary = blank_to_nil(get_in(entry, ["summary", "value"]))
 
           attrs = %{
             feed_url: url,
@@ -223,4 +225,23 @@ defmodule Exoplanet.Parser do
 
   defp normalize_categories([]), do: nil
   defp normalize_categories(cats), do: cats
+
+  # Drop blank/whitespace-only author names; fall back to the source's
+  # configured `name` if nothing meaningful is left.
+  defp normalize_authors(nil, fallback), do: [fallback]
+
+  defp normalize_authors(authors, fallback) when is_list(authors) do
+    case Enum.reject(authors, &blank?/1) do
+      [] -> [fallback]
+      kept -> kept
+    end
+  end
+
+  defp blank_to_nil(value) do
+    if blank?(value), do: nil, else: value
+  end
+
+  defp blank?(nil), do: true
+  defp blank?(s) when is_binary(s), do: String.trim(s) == ""
+  defp blank?(_), do: false
 end
