@@ -9,7 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `Exoplanet.Config` now accepts a `code_of_conduct` field (defaults to `""`).
 - `Exoplanet.Cache` behaviour gains two optional callbacks: `on_success/2` (called
   after a successful feed fetch that updates the cache) and `on_error/3` (called when
   a feed fetch fails and the cache is used as a fallback).
@@ -59,6 +58,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- **Breaking:** `Exoplanet.Config` no longer holds site-presentation metadata.
+  The library now only owns fields it actually reads in `Exoplanet.build/1`:
+  `sources`, `default_filters`, `new_feed_items`, `feed_timeout`, `items`. The
+  removed fields — `name`, `link`, `owner_name`, `owner_email`, `about`,
+  `code_of_conduct`, `activity_threshold`, `related_sites` — were never used
+  by exoplanet itself; they belong to the consumer (e.g. `planet_beam`).
+  `Exoplanet.Config.from_file/1` now ignores unknown keys, so a single `.exs`
+  file can still serve both exoplanet and a consumer-side config struct.
 - Vestigial `Exoplanet.Config` fields that were never wired up: `cache_directory`,
   `output_dir`, `output_theme`, `log_level`. They were carried over from Venus's
   static-output workflow and never had any effect. Configs that still set these keys

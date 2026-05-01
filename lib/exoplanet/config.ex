@@ -4,54 +4,35 @@ defmodule Exoplanet.Config do
 
   Required keys:
 
-  * `name` — your planet's name
-  * `link` — link to the main page
-  * `owner_name` — your name
-  * `owner_email` — your e-mail address
-  * `about` — information about your Planet (Markdown)
-  * `sources` — map of `feed_url => %{name: ...}` (plus optional per-feed keys)
+  * `sources` — map of `feed_url => %{name: ...}` (plus optional per-feed keys
+    like `homepage`, `language`, `filters`)
 
   Optional keys (with defaults):
 
-  * `code_of_conduct` (`""`) — Markdown shown on a code-of-conduct page
-  * `activity_threshold` (`90`) — days before a feed is considered inactive
+  * `default_filters` — global content filters (see `Exoplanet.Filters`)
   * `new_feed_items` (`4`) — max posts kept per feed per rebuild
   * `feed_timeout` (`20`) — per-feed HTTP timeout in seconds
   * `items` (`60`) — total post cap across all feeds
-  * `related_sites` (`%{}`) — map of links to related sites
-  * `default_filters` — global content filters (see `Exoplanet.Filters`)
+
+  This struct holds only the fields that `Exoplanet.build/1` actually reads.
+  Site-level metadata (planet name, owner, about page, related sites, …)
+  belongs to the consumer (e.g. `planet_beam`), not to this library.
   """
 
   @type t :: %__MODULE__{
-          name: String.t(),
-          link: String.t(),
-          owner_email: String.t(),
-          owner_name: String.t(),
-          about: String.t(),
-          code_of_conduct: String.t(),
           sources: map(),
-          activity_threshold: pos_integer(),
           new_feed_items: pos_integer(),
           feed_timeout: pos_integer(),
           items: pos_integer(),
-          related_sites: map(),
           default_filters: Exoplanet.Filters.t()
         }
 
-  @enforce_keys [:name, :link, :owner_name, :owner_email, :sources, :about]
+  @enforce_keys [:sources]
   defstruct [
-    :name,
-    :link,
-    :owner_name,
-    :owner_email,
     :sources,
-    :about,
-    code_of_conduct: "",
-    activity_threshold: 90,
     new_feed_items: 4,
     feed_timeout: 20,
     items: 60,
-    related_sites: %{},
     default_filters: %{
       allow_categories: [],
       block_categories: [],
@@ -61,15 +42,16 @@ defmodule Exoplanet.Config do
   ]
 
   @doc """
-  Creates `Exoplanet.Config` from the given file
+  Creates `Exoplanet.Config` from the given file.
+
+  Unknown keys in the file are ignored, so consumers may keep additional
+  metadata in the same `.exs` file without conflicting with this struct.
   """
   @spec from_file(Path.t()) :: t()
   def from_file(path) when is_binary(path) do
-    {attrs, _} =
-      path
-      |> File.read!()
-      |> Code.eval_string()
-
-    struct!(Exoplanet.Config, attrs)
+    {attrs, _} = Code.eval_file(path)
+    struct!(__MODULE__, Map.take(attrs, recognized_keys()))
   end
+
+  defp recognized_keys, do: Enum.map(__MODULE__.__info__(:struct), & &1.field)
 end

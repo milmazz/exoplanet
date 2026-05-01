@@ -279,11 +279,6 @@ defmodule ExoplanetTest do
       end)
 
       config = %Exoplanet.Config{
-        name: "T",
-        link: "https://t.example",
-        owner_name: "T",
-        owner_email: "t@example.com",
-        about: "",
         sources: %{url => %{name: "F"}},
         new_feed_items: 4,
         items: 60,
@@ -372,15 +367,7 @@ defmodule ExoplanetTest do
   end
 
   defp build_config(opts) do
-    default_opts = [
-      owner_name: "John Doe",
-      owner_email: "jdoe@example.com",
-      name: "Exoplanet",
-      link: "https://example.com",
-      about: ""
-    ]
-
-    struct!(Exoplanet.Config, Keyword.merge(default_opts, opts))
+    struct!(Exoplanet.Config, opts)
   end
 
   defp feed(:rss) do

@@ -118,15 +118,7 @@ defmodule Exoplanet.ParserCacheTest do
   end
 
   defp build_config(opts) do
-    default_opts = [
-      owner_name: "John Doe",
-      owner_email: "jdoe@example.com",
-      name: "Exoplanet",
-      link: "https://example.com",
-      about: ""
-    ]
-
-    struct!(Exoplanet.Config, Keyword.merge(default_opts, opts))
+    struct!(Exoplanet.Config, opts)
   end
 
   defp rss_feed do

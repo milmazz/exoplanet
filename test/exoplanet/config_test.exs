@@ -5,15 +5,7 @@ defmodule Exoplanet.ConfigTest do
 
   describe "default_filters" do
     test "default value is an empty filter map" do
-      config =
-        struct!(Config,
-          name: "Test",
-          link: "https://t.example",
-          owner_name: "T",
-          owner_email: "t@example.com",
-          sources: %{},
-          about: ""
-        )
+      config = struct!(Config, sources: %{})
 
       assert config.default_filters == %{
                allow_categories: [],
@@ -29,12 +21,7 @@ defmodule Exoplanet.ConfigTest do
 
       File.write!(path, """
       %{
-        name: "T",
-        link: "https://t.example",
-        owner_name: "T",
-        owner_email: "t@example.com",
         sources: %{},
-        about: "",
         default_filters: %{
           allow_categories: ["elixir"],
           block_categories: ["spam"],
@@ -52,6 +39,22 @@ defmodule Exoplanet.ConfigTest do
                strip_images: true,
                excerpt_length: 500
              }
+    end
+
+    @tag :tmp_dir
+    test "from_file/1 ignores unknown keys", %{tmp_dir: tmp_dir} do
+      path = Path.join(tmp_dir, "config.exs")
+
+      File.write!(path, """
+      %{
+        sources: %{},
+        name: "ignored",
+        owner_email: "ignored@example.com",
+        related_sites: %{}
+      }
+      """)
+
+      assert %Config{sources: %{}} = Config.from_file(path)
     end
   end
 end
