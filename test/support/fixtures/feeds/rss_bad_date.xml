@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Bad Date</title>
+    <link>https://bad-date.example</link>
+    <description>x</description>
+    <item>
+      <title>Post with bad date</title>
+      <link>https://bad-date.example/bad</link>
+      <author>jane@example.com (Jane)</author>
+      <pubDate>totally not a date</pubDate>
+      <description>body</description>
+    </item>
+    <item>
+      <title>Good post</title>
+      <link>https://bad-date.example/good</link>
+      <author>jane@example.com (Jane)</author>
+      <pubDate>Wed, 01 Apr 2026 00:00:00 +0000</pubDate>
+      <description>body</description>
+    </item>
+  </channel>
+</rss>

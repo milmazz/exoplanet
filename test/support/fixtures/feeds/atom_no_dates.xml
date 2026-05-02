@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Mix</title>
+  <id>tag:no-dates</id>
+  <updated>2026-04-01T00:00:00Z</updated>
+  <entry>
+    <id>https://no-dates.example/no</id>
+    <title>No dates at all</title>
+    <author><name>Alice</name></author>
+    <content type="html">body</content>
+  </entry>
+  <entry>
+    <id>https://no-dates.example/upd</id>
+    <title>Has updated</title>
+    <updated>2026-04-01T00:00:00Z</updated>
+    <author><name>Alice</name></author>
+    <content type="html">body</content>
+  </entry>
+</feed>

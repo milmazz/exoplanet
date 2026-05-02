@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0">
+  <channel>
+    <title>No Date</title>
+    <link>https://no-date.example</link>
+    <description>x</description>
+    <item>
+      <title>No date at all</title>
+      <link>https://no-date.example/no</link>
+      <author>a@b.c (A)</author>
+      <description>body</description>
+    </item>
+    <item>
+      <title>Has date</title>
+      <link>https://no-date.example/yes</link>
+      <author>a@b.c (A)</author>
+      <pubDate>Wed, 01 Apr 2026 00:00:00 +0000</pubDate>
+      <description>body</description>
+    </item>
+  </channel>
+</rss>

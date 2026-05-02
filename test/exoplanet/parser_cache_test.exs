@@ -2,6 +2,7 @@ defmodule Exoplanet.ParserCacheTest do
   use ExUnit.Case, async: false
 
   import ExUnit.CaptureLog
+  import Exoplanet.TestSupport
 
   # In-memory cache adapter backed by an Agent. Implements Exoplanet.Cache so
   # it can be wired in via Application.put_env(:exoplanet, :cache_adapter, ...).
@@ -32,12 +33,12 @@ defmodule Exoplanet.ParserCacheTest do
     :ok
   end
 
-  test "success: 304 Not Modified uses cached body" do
+  test "304 Not Modified uses cached body" do
     url = "https://www.theerlangelist.com/rss"
 
     {:ok, _} =
       TestCacheAdapter.start(%{
-        url => %{etag: "\"abc123\"", last_modified: nil, body: rss_feed()}
+        url => %{etag: "\"abc123\"", last_modified: nil, body: fixture(:rss)}
       })
 
     on_exit(fn -> TestCacheAdapter.stop() end)
@@ -46,20 +47,18 @@ defmodule Exoplanet.ParserCacheTest do
       Plug.Conn.send_resp(conn, 304, "")
     end)
 
-    sources = %{url => %{name: "Saša Jurić"}}
-    config = build_config(sources: sources)
-    [post] = Exoplanet.build(config)
+    [post] = Exoplanet.build(build_config(sources: %{url => %{name: "Saša Jurić"}}))
 
     assert post.title == "Sequences"
     assert post.feed_url == url
   end
 
-  test "success: network error falls back to cached body" do
+  test "network error falls back to cached body" do
     url = "https://www.theerlangelist.com/rss"
 
     {:ok, _} =
       TestCacheAdapter.start(%{
-        url => %{etag: "\"abc123\"", last_modified: nil, body: rss_feed()}
+        url => %{etag: "\"abc123\"", last_modified: nil, body: fixture(:rss)}
       })
 
     on_exit(fn -> TestCacheAdapter.stop() end)
@@ -70,9 +69,7 @@ defmodule Exoplanet.ParserCacheTest do
 
     {posts, log} =
       with_log(fn ->
-        sources = %{url => %{name: "Saša Jurić"}}
-        config = build_config(sources: sources)
-        Exoplanet.build(config)
+        Exoplanet.build(build_config(sources: %{url => %{name: "Saša Jurić"}}))
       end)
 
     assert [post] = posts
@@ -80,7 +77,7 @@ defmodule Exoplanet.ParserCacheTest do
     assert log =~ "something went wrong while retrieving URL"
   end
 
-  test "success: 200 response with etag updates cache" do
+  test "200 response with etag updates cache" do
     url = "https://www.theerlangelist.com/rss"
     {:ok, _} = TestCacheAdapter.start()
     on_exit(fn -> TestCacheAdapter.stop() end)
@@ -88,12 +85,10 @@ defmodule Exoplanet.ParserCacheTest do
     Req.Test.stub(Exoplanet.Parser, fn conn ->
       conn
       |> Plug.Conn.put_resp_header("etag", "\"v1\"")
-      |> Req.Test.html(rss_feed())
+      |> Req.Test.html(fixture(:rss))
     end)
 
-    sources = %{url => %{name: "Saša Jurić"}}
-    config = build_config(sources: sources)
-    Exoplanet.build(config)
+    Exoplanet.build(build_config(sources: %{url => %{name: "Saša Jurić"}}))
 
     cached = TestCacheAdapter.get(url)
     assert cached != nil
@@ -101,47 +96,17 @@ defmodule Exoplanet.ParserCacheTest do
     assert cached.body =~ "Sequences"
   end
 
-  test "success: 200 response without caching headers does not update cache" do
+  test "200 response without caching headers does not update cache" do
     url = "https://www.theerlangelist.com/rss"
     {:ok, _} = TestCacheAdapter.start()
     on_exit(fn -> TestCacheAdapter.stop() end)
 
-    Req.Test.stub(Exoplanet.Parser, fn conn ->
-      Req.Test.html(conn, rss_feed())
-    end)
+    stub_feed(:rss)
 
-    sources = %{url => %{name: "Saša Jurić"}}
-    config = build_config(sources: sources)
-    Exoplanet.build(config)
+    Exoplanet.build(build_config(sources: %{url => %{name: "Saša Jurić"}}))
 
     assert TestCacheAdapter.get(url) == nil
   end
 
-  defp build_config(opts) do
-    struct!(Exoplanet.Config, opts)
-  end
-
-  defp rss_feed do
-    """
-    <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
-      <channel>
-        <atom:link href="http://theerlangelist.com/rss" rel="self" type="application/rss+xml" />
-        <title>The Erlangelist</title>
-        <description>(not only) Erlang related musings</description>
-        <link>http://theerlangelist.com</link>
-
-        <item>
-          <title><![CDATA[Sequences]]></title>
-          <link><![CDATA[http://theerlangelist.com//article/sequences]]></link>
-          <pubDate>Mon, 14 Dec 20 00:00:00 +0000</pubDate>
-          <description>
-            <![CDATA[<h1>Sequences</h1>
-          ]]>
-          </description>
-          <guid isPermaLink="true">http://theerlangelist.com//article/sequences</guid>
-        </item>
-      </channel>
-    </rss>
-    """
-  end
+  defp build_config(opts), do: struct!(Exoplanet.Config, opts)
 end

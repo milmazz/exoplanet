@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <generator uri="https://jekyllrb.com/" version="3.9.0">Jekyll</generator>
+  <link href="https://milmazz.uno/atom.xml" rel="self" type="application/atom+xml" />
+  <link href="https://milmazz.uno/" rel="alternate" type="text/html" />
+  <updated>2022-02-21T18:48:10-06:00</updated>
+  <id>https://milmazz.uno/atom.xml</id>
+  <title type="html">milmazz</title>
+  <subtitle>To teach is to learn twice. - Joseph Joubert</subtitle>
+  <author>
+    <name>Milton Mazzarri</name>
+    <email>me@milmazz.uno</email>
+  </author>
+  <entry>
+    <title type="html">Oban: Testing your Workers and Configuration</title>
+    <link href="https://milmazz.uno/article/2022/02/21/oban-testing-your-workers-and-configuration/" rel="alternate" type="text/html" title="Oban: Testing your Workers and Configuration" />
+    <published>2022-02-21T00:00:00-06:00</published>
+    <updated>2022-02-22T00:00:00-06:00</updated>
+    <id>https://milmazz.uno/article/2022/02/21/oban-testing-your-workers-and-configuration</id>
+    <summary type="html"><![CDATA[Testing your Oban Workers and its configuration.]]></summary>
+    <content type="html" xml:base="https://milmazz.uno/article/2022/02/21/oban-testing-your-workers-and-configuration/">In this article, I will continue talking about Oban, but I’ll focus on how to...</content>
+  </entry>
+</feed>

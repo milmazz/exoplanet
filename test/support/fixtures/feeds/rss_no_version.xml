@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Example</title>
+    <link>https://example.com</link>
+    <item>
+      <title>Post Without Version</title>
+      <link>https://example.com/post-1</link>
+      <pubDate>Mon, 14 Dec 2020 00:00:00 +0000</pubDate>
+      <description>Content here</description>
+    </item>
+  </channel>
+</rss>
