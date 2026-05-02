@@ -151,7 +151,7 @@ defmodule ExoplanetTest do
       end)
 
     assert result == []
-    assert log =~ "something went wrong while parsing feed"
+    assert log =~ "parse failed"
   end
 
   test "success: parses rss feeds without version attribute" do
@@ -199,7 +199,7 @@ defmodule ExoplanetTest do
       end)
 
     assert result == []
-    assert log =~ "something went wrong while parsing feed"
+    assert log =~ "parse failed"
   end
 
   test "error: emit logs when cannot retrieve a source" do
@@ -363,6 +363,50 @@ defmodule ExoplanetTest do
 
       assert post.summary == nil
       assert post.body =~ "Body content"
+    end
+  end
+
+  describe "malformed dates" do
+    test "rss: unparseable <pubDate> drops only the bad post; siblings survive" do
+      Req.Test.stub(Exoplanet.Parser, fn conn ->
+        Req.Test.html(conn, feed(:rss_bad_date))
+      end)
+
+      sources = %{"https://bad-date.example/feed.rss" => %{name: "Bad Date"}}
+      config = build_config(sources: sources)
+
+      {posts, log} = with_log(fn -> Exoplanet.build(config) end)
+
+      assert [%Exoplanet.Post{} = post] = posts
+      assert post.title == "Good post"
+      assert NaiveDateTime.compare(post.published, ~N[2026-04-01 00:00:00]) == :eq
+      assert log =~ "unparseable RFC822 date"
+      assert log =~ "totally not a date"
+      assert log =~ "skipping post"
+    end
+
+    test "rss: missing <pubDate> drops the post (no date = not sortable)" do
+      Req.Test.stub(Exoplanet.Parser, fn conn ->
+        Req.Test.html(conn, feed(:rss_no_pubdate))
+      end)
+
+      sources = %{"https://no-date.example/feed.rss" => %{name: "No Date"}}
+      config = build_config(sources: sources)
+      [%Exoplanet.Post{} = post] = Exoplanet.build(config)
+
+      assert post.title == "Has date"
+    end
+
+    test "atom: entry with neither <published> nor <updated> is dropped" do
+      Req.Test.stub(Exoplanet.Parser, fn conn ->
+        Req.Test.html(conn, feed(:atom_no_dates))
+      end)
+
+      sources = %{"https://no-dates.example/feed.xml" => %{name: "Mix"}}
+      config = build_config(sources: sources)
+      [%Exoplanet.Post{} = post] = Exoplanet.build(config)
+
+      assert post.title == "Has updated"
     end
   end
 
@@ -579,6 +623,83 @@ defmodule ExoplanetTest do
         <author><name>Alice</name></author>
         <summary></summary>
         <content type="html">Body content here</content>
+      </entry>
+    </feed>
+    """
+  end
+
+  defp feed(:rss_bad_date) do
+    """
+    <?xml version="1.0" encoding="utf-8"?>
+    <rss version="2.0">
+      <channel>
+        <title>Bad Date</title>
+        <link>https://bad-date.example</link>
+        <description>x</description>
+        <item>
+          <title>Post with bad date</title>
+          <link>https://bad-date.example/bad</link>
+          <author>jane@example.com (Jane)</author>
+          <pubDate>totally not a date</pubDate>
+          <description>body</description>
+        </item>
+        <item>
+          <title>Good post</title>
+          <link>https://bad-date.example/good</link>
+          <author>jane@example.com (Jane)</author>
+          <pubDate>Wed, 01 Apr 2026 00:00:00 +0000</pubDate>
+          <description>body</description>
+        </item>
+      </channel>
+    </rss>
+    """
+  end
+
+  defp feed(:rss_no_pubdate) do
+    """
+    <?xml version="1.0" encoding="utf-8"?>
+    <rss version="2.0">
+      <channel>
+        <title>No Date</title>
+        <link>https://no-date.example</link>
+        <description>x</description>
+        <item>
+          <title>No date at all</title>
+          <link>https://no-date.example/no</link>
+          <author>a@b.c (A)</author>
+          <description>body</description>
+        </item>
+        <item>
+          <title>Has date</title>
+          <link>https://no-date.example/yes</link>
+          <author>a@b.c (A)</author>
+          <pubDate>Wed, 01 Apr 2026 00:00:00 +0000</pubDate>
+          <description>body</description>
+        </item>
+      </channel>
+    </rss>
+    """
+  end
+
+  defp feed(:atom_no_dates) do
+    """
+    <?xml version="1.0" encoding="utf-8"?>
+    <feed xmlns="http://www.w3.org/2005/Atom">
+      <title>Mix</title>
+      <id>tag:no-dates</id>
+      <updated>2026-04-01T00:00:00Z</updated>
+      <entry>
+        <id>https://no-dates.example/no</id>
+        <title>No dates at all</title>
+        <author><name>Alice</name></author>
+        <content type="html">body</content>
+      </entry>
+      <entry>
+        <id>https://no-dates.example/upd</id>
+        <title>Has updated</title>
+        <updated>2026-04-01T00:00:00Z</updated>
+        <author><name>Alice</name></author>
+        <content type="html">body</content>
       </entry>
     </feed>
     """

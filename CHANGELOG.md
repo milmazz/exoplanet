@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [0.3.0] - 2026-05-02
+
 ### Added
 
 - `Exoplanet.Cache` behaviour gains two optional callbacks: `on_success/2` (called
@@ -29,11 +31,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- `Exoplanet.Parser.parse/2` is now purely HTTP fetch + XML parse; it returns
-  built `%Exoplanet.Post{}` structs. Per-source filtering and the `new_feed_items`
-  cap moved to `Exoplanet.build/1`.
+- The internal Exoplanet.Parser module is now purely HTTP fetch + XML parse;
+  it returns built `%Exoplanet.Post{}` structs. Per-source filtering and the
+  `new_feed_items` cap moved to `Exoplanet.build/1`.
+- Renamed `examples/planet-beam.conf` to `example/planet_beam.exs` to make it
+  explicit that the file is an Elixir script.
 
 ### Fixed
+
+- A single RSS entry with a malformed `<pubDate>` no longer crashes the entire
+  feed's parse. The offending entry is skipped (siblings in the same feed are
+  still emitted) and a warning is logged with the feed URL and offending value.
+  Atom `<published>` / `<updated>` fields are still rejected upstream by
+  `FastRSS`, but the parser no longer uses bang variants and so will degrade
+  gracefully if that ever changes.
+- Entries without a usable date are now also skipped: RSS items missing
+  `<pubDate>` (and Dublin Core `<dc:date>`) and Atom entries missing both
+  `<published>` and `<updated>`. Without a date these posts can't participate
+  in the chronological merge, so the previous behaviour (keep with `nil`
+  published, sort to the end) was rarely useful.
+- RSS 1.0 / RDF feeds now sort correctly: when `<pubDate>` is absent, the
+  parser falls back to the first Dublin Core `<dc:date>` value (an ISO-8601
+  string in `FastRSS`'s `dublin_core_ext.dates`). Previously these entries
+  were emitted with `published: nil` and bunched at the end of the list.
 
 - RSS detection now recognises feeds that omit the `version` attribute on `<rss>` and
   RSS 1.0 feeds that use the `<rdf:RDF>` root element. Previously these were
@@ -68,10 +88,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   file can still serve both exoplanet and a consumer-side config struct.
 - Vestigial `Exoplanet.Config` fields that were never wired up: `cache_directory`,
   `output_dir`, `output_theme`, `log_level`. They were carried over from Venus's
-  static-output workflow and never had any effect. Configs that still set these keys
-  will now raise on `Config.from_file/1` — remove them from your config file.
+  static-output workflow and never had any effect. Configs that still set them are
+  silently ignored (per the unknown-keys rule above), but the values are no longer
+  surfaced anywhere — remove them from your config file at your convenience.
 
-## [0.2.0] - 2025-04-31
+## [0.2.0] - 2025-03-31
 
 ### Added
 
@@ -97,6 +118,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release.
 
-[unreleased]: https://github.com/milmazz/exoplanet/compare/v0.2.0...HEAD
+[unreleased]: https://github.com/milmazz/exoplanet/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/milmazz/exoplanet/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/milmazz/exoplanet/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/milmazz/exoplanet/releases/tag/v0.1.0
