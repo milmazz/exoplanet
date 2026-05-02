@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns="http://purl.org/rss/1.0/"
+         xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel rdf:about="https://example.com/rss1.rdf">
+    <title>RSS 1.0 Feed</title>
+    <link>https://example.com</link>
+    <items>
+      <rdf:Seq>
+        <rdf:li rdf:resource="https://example.com/rss1-post"/>
+      </rdf:Seq>
+    </items>
+  </channel>
+  <item rdf:about="https://example.com/rss1-post">
+    <title>RSS 1.0 Post</title>
+    <link>https://example.com/rss1-post</link>
+    <description>RSS 1.0 content</description>
+    <dc:date>2024-01-01T00:00:00Z</dc:date>
+  </item>
+</rdf:RDF>
