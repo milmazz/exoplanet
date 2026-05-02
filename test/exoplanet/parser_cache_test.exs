@@ -2,7 +2,7 @@ defmodule Exoplanet.ParserCacheTest do
   use ExUnit.Case, async: false
 
   import ExUnit.CaptureLog
-  import Exoplanet.TestSupport
+  import Exoplanet.TestHelpers
 
   # In-memory cache adapter backed by an Agent. Implements Exoplanet.Cache so
   # it can be wired in via Application.put_env(:exoplanet, :cache_adapter, ...).

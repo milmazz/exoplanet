@@ -2,7 +2,7 @@ defmodule ExoplanetTest do
   use ExUnit.Case, async: true
 
   import ExUnit.CaptureLog
-  import Exoplanet.TestSupport
+  import Exoplanet.TestHelpers
 
   describe "RSS parsing" do
     test "parses rss feeds" do
