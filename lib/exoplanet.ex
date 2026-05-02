@@ -15,6 +15,7 @@ defmodule Exoplanet do
   @doc """
   Returns a list of ordered post based on their publication date
   """
+  @spec build(Exoplanet.Config.t()) :: [Exoplanet.Post.t()]
   def build(%Exoplanet.Config{sources: sources, default_filters: defaults} = config) do
     sources
     |> Task.async_stream(

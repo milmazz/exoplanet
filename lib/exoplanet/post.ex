@@ -10,7 +10,7 @@ defmodule Exoplanet.Post do
           feed_url: String.t(),
           authors: [String.t()],
           title: String.t(),
-          body: String.t(),
+          body: String.t() | nil,
           categories: [String.t()] | nil,
           published: NaiveDateTime.t() | nil,
           updated: NaiveDateTime.t() | nil,
@@ -22,7 +22,7 @@ defmodule Exoplanet.Post do
   @doc """
   Builds the struct of posts or feed entries
   """
-  @spec build(map(), String.t()) :: t()
+  @spec build(map(), String.t() | nil) :: t()
   def build(attrs, body) do
     attrs =
       Map.take(attrs, [

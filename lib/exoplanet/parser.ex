@@ -19,8 +19,8 @@ defmodule Exoplanet.Parser do
 
   # Fetches the feed body, using the configured cache adapter for conditional
   # GET when available. Returns the body string, or nil on an uncached error.
-  defp fetch_body(url, config) do
-    {conditional_headers, cached_entry} = build_conditional_headers(url, config)
+  defp fetch_body(url, _config) do
+    {conditional_headers, cached_entry} = build_conditional_headers(url)
 
     base_opts = Application.get_env(:exoplanet, :planet_req_options, [])
     opts = merge_headers(base_opts, conditional_headers)
@@ -77,7 +77,7 @@ defmodule Exoplanet.Parser do
     end
   end
 
-  defp build_conditional_headers(url, _config) do
+  defp build_conditional_headers(url) do
     case cache_adapter() do
       nil ->
         {[], nil}
@@ -144,71 +144,112 @@ defmodule Exoplanet.Parser do
   defp parse_rss(url, body, name) do
     case FastRSS.parse_rss(body) do
       {:ok, %{"items" => items}} ->
-        Enum.map(items, fn item ->
-          title = item["title"]
-          # Prefer <content:encoded> (Content RSS module) over <description> —
-          # feeds like Medium put the full HTML article in content:encoded and
-          # leave description short or empty.
-          content = blank_to_nil(item["content"]) || item["description"]
-          authors = normalize_authors([item["author"]], name)
+        Enum.flat_map(items, fn item ->
+          case parse_naive_datetime(item["pub_date"], url, :rfc822) do
+            :skip ->
+              []
 
-          categories =
-            (item["categories"] || []) |> Enum.map(& &1["name"]) |> normalize_categories()
+            {:ok, published} ->
+              title = item["title"]
+              # Prefer <content:encoded> (Content RSS module) over <description> —
+              # feeds like Medium put the full HTML article in content:encoded and
+              # leave description short or empty.
+              content = blank_to_nil(item["content"]) || item["description"]
+              authors = normalize_authors([item["author"]], name)
 
-          id = item["link"] || get_in(item, ["guid", "value"])
-          published = item["pub_date"] && Exoplanet.DateTimeParser.parse!(item["pub_date"])
+              categories =
+                (item["categories"] || []) |> Enum.map(& &1["name"]) |> normalize_categories()
 
-          attrs = %{
-            feed_url: url,
-            authors: authors,
-            title: title,
-            categories: categories,
-            id: id,
-            published: published
-          }
+              id = item["link"] || get_in(item, ["guid", "value"])
 
-          {attrs, content}
+              attrs = %{
+                feed_url: url,
+                authors: authors,
+                title: title,
+                categories: categories,
+                id: id,
+                published: published
+              }
+
+              [{attrs, content}]
+          end
         end)
 
       {:error, reason} ->
-        Logger.error("something went wrong while parsing feed #{url}, reason: #{inspect(reason)}")
-        []
+        log_parse_error(url, reason)
     end
   end
 
   defp parse_atom(url, body, name) do
     case FastRSS.parse_atom(body) do
       {:ok, %{"entries" => entries}} ->
-        Enum.map(entries, fn entry ->
-          title = get_in(entry, ["title", "value"])
-          content = get_in(entry, ["content", "value"])
-          authors = normalize_authors(get_in(entry, ["authors", Access.all(), "name"]), name)
+        Enum.flat_map(entries, fn entry ->
+          with {:ok, published} <- parse_naive_datetime(entry["published"], url, :iso8601),
+               {:ok, updated} <- parse_naive_datetime(entry["updated"], url, :iso8601) do
+            title = get_in(entry, ["title", "value"])
+            content = get_in(entry, ["content", "value"])
+            authors = normalize_authors(get_in(entry, ["authors", Access.all(), "name"]), name)
 
-          categories =
-            get_in(entry, ["categories", Access.all(), "term"]) |> normalize_categories()
+            categories =
+              get_in(entry, ["categories", Access.all(), "term"]) |> normalize_categories()
 
-          id = Map.get(entry, "id")
-          published = entry["published"] && NaiveDateTime.from_iso8601!(entry["published"])
-          updated = entry["updated"] && NaiveDateTime.from_iso8601!(entry["updated"])
-          summary = blank_to_nil(get_in(entry, ["summary", "value"]))
+            id = Map.get(entry, "id")
+            summary = blank_to_nil(get_in(entry, ["summary", "value"]))
 
-          attrs = %{
-            feed_url: url,
-            authors: authors,
-            title: title,
-            categories: categories,
-            id: id,
-            published: published || updated,
-            updated: updated,
-            summary: summary
-          }
+            attrs = %{
+              feed_url: url,
+              authors: authors,
+              title: title,
+              categories: categories,
+              id: id,
+              published: published || updated,
+              updated: updated,
+              summary: summary
+            }
 
-          {attrs, content}
+            [{attrs, content}]
+          else
+            :skip -> []
+          end
         end)
 
       {:error, reason} ->
-        Logger.error("something went wrong while parsing feed #{url}, reason: #{inspect(reason)}")
-        []
+        log_parse_error(url, reason)
+    end
+  end
+
+  defp log_parse_error(url, reason) do
+    Logger.error("Feed #{url}: parse failed — #{inspect(reason)}")
+    []
+  end
+
+  # Parse a feed-entry timestamp. Returns:
+  #   * `{:ok, nil}` — value missing (caller treats absent date as OK)
+  #   * `{:ok, NaiveDateTime.t()}` — parsed successfully
+  #   * `:skip` — value present but unparseable (caller drops the entry)
+  # A warning is logged before returning `:skip` so operators can see which feed
+  # produced the bad value.
+  defp parse_naive_datetime(nil, _url, _kind), do: {:ok, nil}
+
+  defp parse_naive_datetime(value, url, :rfc822) do
+    case Exoplanet.DateTimeParser.parse(value) do
+      {:ok, dt} ->
+        {:ok, dt}
+
+      _ ->
+        Logger.warning("Feed #{url}: unparseable RFC822 date #{inspect(value)} — skipping post")
+        :skip
+    end
+  end
+
+  defp parse_naive_datetime(value, url, :iso8601) do
+    case NaiveDateTime.from_iso8601(value) do
+      {:ok, dt} ->
+        {:ok, dt}
+
+      {:error, _} ->
+        Logger.warning("Feed #{url}: unparseable ISO8601 date #{inspect(value)} — skipping post")
+        :skip
     end
   end
 

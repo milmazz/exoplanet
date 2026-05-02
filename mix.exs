@@ -1,7 +1,7 @@
 defmodule Exoplanet.MixProject do
   use Mix.Project
 
-  @version "0.2.1-dev"
+  @version "0.3.0"
 
   def project do
     [
@@ -43,13 +43,15 @@ defmodule Exoplanet.MixProject do
   defp docs do
     [
       main: "Exoplanet",
-      extras: ["README.md"]
+      extras: ["README.md", "CHANGELOG.md"]
     ]
   end
 
   defp package do
     [
       licenses: ["Apache-2.0"],
+      maintainers: ["Milton Mazzarri"],
+      files: ~w(lib example mix.exs README.md CHANGELOG.md LICENSE),
       links: %{"GitHub" => "https://github.com/milmazz/exoplanet"}
     ]
   end
