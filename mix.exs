@@ -1,7 +1,7 @@
 defmodule Exoplanet.MixProject do
   use Mix.Project
 
-  @version "0.3.0"
+  @version "0.3.1-dev"
 
   def project do
     [
@@ -42,7 +42,7 @@ defmodule Exoplanet.MixProject do
 
   defp docs do
     [
-      main: "Exoplanet",
+      main: "readme",
       extras: ["README.md", "CHANGELOG.md"]
     ]
   end
