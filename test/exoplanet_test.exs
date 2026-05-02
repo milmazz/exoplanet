@@ -135,7 +135,23 @@ defmodule ExoplanetTest do
 
   describe "blank authors" do
     test "rss: blank <author> falls back to the source's configured name" do
-      stub_feed(:rss_blank_author)
+      Req.Test.stub(Exoplanet.Parser, fn conn ->
+        Req.Test.html(conn, """
+        <rss version="2.0">
+          <channel>
+            <title>Blank Author</title>
+            <link>https://blank-author.example</link>
+            <item>
+              <title>Post With Blank Author</title>
+              <link>https://blank-author.example/post-1</link>
+              <pubDate>Mon, 14 Dec 2020 00:00:00 +0000</pubDate>
+              <author>   </author>
+              <description>Body</description>
+            </item>
+          </channel>
+        </rss>
+        """)
+      end)
 
       sources = %{"https://blank-author.example/feed" => %{name: "Source Name"}}
       [%Exoplanet.Post{} = post] = Exoplanet.build(build_config(sources: sources))
@@ -144,7 +160,25 @@ defmodule ExoplanetTest do
     end
 
     test "atom: every blank <author><name>...</name></author> falls back to the source name" do
-      stub_feed(:atom_blank_author)
+      Req.Test.stub(Exoplanet.Parser, fn conn ->
+        Req.Test.html(conn, """
+        <?xml version="1.0" encoding="utf-8"?>
+        <feed xmlns="http://www.w3.org/2005/Atom">
+          <title>Blank Author</title>
+          <id>tag:blank-author</id>
+          <updated>2024-01-01T00:00:00Z</updated>
+          <entry>
+            <id>https://blank-author.example/post-1</id>
+            <title>Post With Blank Author Names</title>
+            <updated>2024-01-01T00:00:00Z</updated>
+            <published>2024-01-01T00:00:00Z</published>
+            <author><name></name></author>
+            <author><name>   </name></author>
+            <content type="html">Body</content>
+          </entry>
+        </feed>
+        """)
+      end)
 
       sources = %{"https://blank-author.example/feed.xml" => %{name: "Source Name"}}
       [%Exoplanet.Post{} = post] = Exoplanet.build(build_config(sources: sources))
@@ -172,7 +206,9 @@ defmodule ExoplanetTest do
 
   describe "errors" do
     test "logs when an atom feed fails to parse" do
-      stub_body(~s(<?xml version="1.0" encoding="utf-8"?>\n))
+      Req.Test.stub(Exoplanet.Parser, fn conn ->
+        Req.Test.html(conn, ~s(<?xml version="1.0" encoding="utf-8"?>\n))
+      end)
 
       {result, log} =
         with_log(fn ->
@@ -185,9 +221,12 @@ defmodule ExoplanetTest do
     end
 
     test "logs when an rss feed fails to parse" do
-      stub_body(
-        ~s(<?xml version="1.0" encoding="utf-8"?>\n<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">\n)
-      )
+      Req.Test.stub(Exoplanet.Parser, fn conn ->
+        Req.Test.html(conn, """
+        <?xml version="1.0" encoding="utf-8"?>
+        <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+        """)
+      end)
 
       {result, log} =
         with_log(fn ->
@@ -263,7 +302,31 @@ defmodule ExoplanetTest do
     end
 
     test "rss: missing <pubDate> drops the post (no date = not sortable)" do
-      stub_feed(:rss_no_pubdate)
+      Req.Test.stub(Exoplanet.Parser, fn conn ->
+        Req.Test.html(conn, """
+        <?xml version="1.0" encoding="utf-8"?>
+        <rss version="2.0">
+          <channel>
+            <title>No Date</title>
+            <link>https://no-date.example</link>
+            <description>x</description>
+            <item>
+              <title>No date at all</title>
+              <link>https://no-date.example/no</link>
+              <author>a@b.c (A)</author>
+              <description>body</description>
+            </item>
+            <item>
+              <title>Has date</title>
+              <link>https://no-date.example/yes</link>
+              <author>a@b.c (A)</author>
+              <pubDate>Wed, 01 Apr 2026 00:00:00 +0000</pubDate>
+              <description>body</description>
+            </item>
+          </channel>
+        </rss>
+        """)
+      end)
 
       sources = %{"https://no-date.example/feed.rss" => %{name: "No Date"}}
       [%Exoplanet.Post{} = post] = Exoplanet.build(build_config(sources: sources))
@@ -272,7 +335,29 @@ defmodule ExoplanetTest do
     end
 
     test "atom: entry with neither <published> nor <updated> is dropped" do
-      stub_feed(:atom_no_dates)
+      Req.Test.stub(Exoplanet.Parser, fn conn ->
+        Req.Test.html(conn, """
+        <?xml version="1.0" encoding="utf-8"?>
+        <feed xmlns="http://www.w3.org/2005/Atom">
+          <title>Mix</title>
+          <id>tag:no-dates</id>
+          <updated>2026-04-01T00:00:00Z</updated>
+          <entry>
+            <id>https://no-dates.example/no</id>
+            <title>No dates at all</title>
+            <author><name>Alice</name></author>
+            <content type="html">body</content>
+          </entry>
+          <entry>
+            <id>https://no-dates.example/upd</id>
+            <title>Has updated</title>
+            <updated>2026-04-01T00:00:00Z</updated>
+            <author><name>Alice</name></author>
+            <content type="html">body</content>
+          </entry>
+        </feed>
+        """)
+      end)
 
       sources = %{"https://no-dates.example/feed.xml" => %{name: "Mix"}}
       [%Exoplanet.Post{} = post] = Exoplanet.build(build_config(sources: sources))

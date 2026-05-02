@@ -32,9 +32,4 @@ defmodule Exoplanet.TestHelpers do
       Req.Test.html(conn, Map.fetch!(bodies, conn.host))
     end)
   end
-
-  @doc "Stub `Exoplanet.Parser` to return a raw XML body (for inline malformed inputs)."
-  def stub_body(body) when is_binary(body) do
-    Req.Test.stub(Exoplanet.Parser, fn conn -> Req.Test.html(conn, body) end)
-  end
 end

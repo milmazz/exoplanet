@@ -4,6 +4,17 @@ defmodule Exoplanet.FiltersTest do
   alias Exoplanet.Filters
 
   describe "merge/2" do
+    # Populated default filter map used by these tests; co-located here because
+    # only the merge/2 tests need it (the rest exercise overrides on top of an
+    # empty map via filters/1).
+    defp merge_defaults do
+      filters(
+        allow_categories: ["elixir", "erlang"],
+        block_categories: ["personal"],
+        excerpt_length: 500
+      )
+    end
+
     test "returns defaults when per_feed is nil" do
       assert Filters.merge(merge_defaults(), nil) == merge_defaults()
     end
@@ -268,16 +279,6 @@ defmodule Exoplanet.FiltersTest do
         excerpt_length: nil
       },
       Map.new(overrides)
-    )
-  end
-
-  # Default filter map used by the merge/2 tests — has actual content so the
-  # tests can verify defaults survive unchanged.
-  defp merge_defaults do
-    filters(
-      allow_categories: ["elixir", "erlang"],
-      block_categories: ["personal"],
-      excerpt_length: 500
     )
   end
 
