@@ -145,8 +145,13 @@ defmodule Exoplanet.Parser do
     case FastRSS.parse_rss(body) do
       {:ok, %{"items" => items}} ->
         Enum.flat_map(items, fn item ->
-          case parse_naive_datetime(item["pub_date"], url, :rfc822) do
+          case rss_published(item, url) do
             :skip ->
+              []
+
+            {:ok, nil} ->
+              # No usable date (neither <pubDate> nor <dc:date>) — drop the entry;
+              # without a date it can't participate in the chronological merge.
               []
 
             {:ok, published} ->
@@ -185,7 +190,11 @@ defmodule Exoplanet.Parser do
       {:ok, %{"entries" => entries}} ->
         Enum.flat_map(entries, fn entry ->
           with {:ok, published} <- parse_naive_datetime(entry["published"], url, :iso8601),
-               {:ok, updated} <- parse_naive_datetime(entry["updated"], url, :iso8601) do
+               {:ok, updated} <- parse_naive_datetime(entry["updated"], url, :iso8601),
+               # FastRSS injects 1970-01-01 epoch when <updated> is absent;
+               # treat that sentinel as missing so we skip dateless entries.
+               updated = denull_atom_updated(updated),
+               timestamp when not is_nil(timestamp) <- published || updated do
             title = get_in(entry, ["title", "value"])
             content = get_in(entry, ["content", "value"])
             authors = normalize_authors(get_in(entry, ["authors", Access.all(), "name"]), name)
@@ -202,14 +211,16 @@ defmodule Exoplanet.Parser do
               title: title,
               categories: categories,
               id: id,
-              published: published || updated,
+              published: timestamp,
               updated: updated,
               summary: summary
             }
 
             [{attrs, content}]
           else
-            :skip -> []
+            # `:skip` from parse_naive_datetime, or `nil` from the timestamp
+            # check (entry has neither <published> nor <updated> — drop it).
+            _ -> []
           end
         end)
 
@@ -222,6 +233,28 @@ defmodule Exoplanet.Parser do
     Logger.error("Feed #{url}: parse failed — #{inspect(reason)}")
     []
   end
+
+  # Pick the best available RSS publication date: prefer <pubDate> (RFC 822),
+  # then fall back to the first Dublin Core <dc:date> (ISO 8601). FastRSS exposes
+  # the latter under "dublin_core_ext" — RSS 1.0 feeds rely on it because the
+  # 1.0 spec doesn't define <pubDate>.
+  defp rss_published(item, url) do
+    case item["pub_date"] do
+      nil ->
+        case get_in(item, ["dublin_core_ext", "dates"]) do
+          [date | _] -> parse_naive_datetime(date, url, :iso8601)
+          _ -> {:ok, nil}
+        end
+
+      value ->
+        parse_naive_datetime(value, url, :rfc822)
+    end
+  end
+
+  # FastRSS substitutes the Unix epoch when an Atom <updated> element is absent;
+  # we collapse that sentinel to `nil` so dateless entries can be detected.
+  defp denull_atom_updated(~N[1970-01-01 00:00:00]), do: nil
+  defp denull_atom_updated(other), do: other
 
   # Parse a feed-entry timestamp. Returns:
   #   * `{:ok, nil}` — value missing (caller treats absent date as OK)

@@ -45,6 +45,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Atom `<published>` / `<updated>` fields are still rejected upstream by
   `FastRSS`, but the parser no longer uses bang variants and so will degrade
   gracefully if that ever changes.
+- Entries without a usable date are now also skipped: RSS items missing
+  `<pubDate>` (and Dublin Core `<dc:date>`) and Atom entries missing both
+  `<published>` and `<updated>`. Without a date these posts can't participate
+  in the chronological merge, so the previous behaviour (keep with `nil`
+  published, sort to the end) was rarely useful.
+- RSS 1.0 / RDF feeds now sort correctly: when `<pubDate>` is absent, the
+  parser falls back to the first Dublin Core `<dc:date>` value (an ISO-8601
+  string in `FastRSS`'s `dublin_core_ext.dates`). Previously these entries
+  were emitted with `published: nil` and bunched at the end of the list.
 
 - RSS detection now recognises feeds that omit the `version` attribute on `<rss>` and
   RSS 1.0 feeds that use the `<rdf:RDF>` root element. Previously these were
