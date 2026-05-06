@@ -92,9 +92,11 @@ defmodule Exoplanet.Filters do
   end
 
   # Builds a 1-arity walker function tailored to which HTML filters are on.
-  # Returns `nil` when no HTML transformation is requested.
+  # Returns `nil` when no HTML transformation is requested. `sanitize_html`
+  # defaults to `true` so a partially-specified filter map fails loud on the
+  # missing tag/attr keys rather than silently passing unsanitized content.
   defp node_walker(filters) do
-    sanitize? = Map.get(filters, :sanitize_html, false)
+    sanitize? = Map.get(filters, :sanitize_html, true)
     strip_images? = Map.get(filters, :strip_images, false)
 
     cond do
