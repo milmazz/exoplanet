@@ -2,8 +2,9 @@ defmodule Exoplanet.Filters do
   @moduledoc """
   Per-feed content filters: HTML sanitization, category allow/block lists,
   image stripping, and summary truncation. The sanitizer removes dangerous
-  tags and style attributes but does not filter attribute-based injection
-  vectors such as `on*` event handlers or `javascript:` URIs.
+  tags and style attributes but the *default configuration* does not filter
+  attribute-based injection vectors such as `on*` event handlers or
+  `javascript:` URIs.
   """
 
   @type t :: %{
@@ -37,9 +38,9 @@ defmodule Exoplanet.Filters do
   Applies the merged filter map to a list of `Exoplanet.Post` structs.
 
   Returns the filtered list. Posts dropped by category filters are removed
-  entirely. The `sanitize_html`, `strip_images`, and `excerpt_length` filters
-  modify each post's `:body` and `:summary`. Sanitization runs first, then
-  image stripping, then excerpt generation.
+  entirely. The `sanitize_html` and `strip_images` filters modify each post's
+  `:body` and `:summary`. The `excerpt_length` filter modifies only `:summary`.
+  Sanitization runs first, then image stripping, then excerpt generation.
   """
   @spec apply([Exoplanet.Post.t()], t()) :: [Exoplanet.Post.t()]
   def apply(posts, filters) do
