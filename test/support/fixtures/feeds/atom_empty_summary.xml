@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Empty Summary</title>
+  <id>tag:empty-summary</id>
+  <updated>2024-01-01T00:00:00Z</updated>
+  <entry>
+    <id>https://empty-summary.example/post-1</id>
+    <title>Post With Empty Summary</title>
+    <updated>2024-01-01T00:00:00Z</updated>
+    <published>2024-01-01T00:00:00Z</published>
+    <author><name>Alice</name></author>
+    <summary></summary>
+    <content type="html">Body content here</content>
+  </entry>
+</feed>

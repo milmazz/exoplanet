@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Example</title>
+  <updated>2025-03-26T09:37:06+00:00</updated>
+  <id>http://example.com</id>
+
+  <entry>
+    <title>title</title>
+    <link href="http://example.com/title/"/>
+
+    <author>
+    <name>John Doe</name>
+    </author>
+
+    <updated>2025-03-25T00:00:00+00:00</updated>
+    <id>some-id</id>
+    <content>...</content>
+  </entry>
+</feed>
