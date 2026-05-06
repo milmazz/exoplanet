@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Exoplanet.Post.authors`, preferring it over the RSS 2.0 `<author>`
   element. RSS spec'd `<author>` as an email, which most blogs leave empty;
   `<dc:creator>` is where the human-readable name typically lives.
+- `Exoplanet.Filters` now sanitizes post bodies and summaries by default.
+  Dangerous tags (`iframe`, `script`, `object`, `embed`) are removed entirely;
+  `style` attributes are stripped from all remaining elements. Three new filter
+  keys control the behaviour: `sanitize_html` (default `true`), `dropped_tags`
+  (default `~w(iframe script object embed)`), and `dropped_attrs` (default
+  `~w(style)`). All three follow the same per-feed override semantics as
+  existing filter keys. Set `sanitize_html: false` per feed to opt out.
 
 ## [0.3.0] - 2026-05-02
 
