@@ -80,22 +80,6 @@ defmodule Exoplanet.Filters do
   # Single tree walk that fuses sanitization and image stripping. Returns the
   # post unchanged when neither filter is enabled (no parse/serialize cost).
   defp apply_html_filters(post, filters) do
-    case node_walker(filters) do
-      nil ->
-        post
-
-      walker ->
-        post
-        |> Map.update!(:body, &transform_html(&1, walker))
-        |> Map.update!(:summary, &transform_html(&1, walker))
-    end
-  end
-
-  # Builds a 1-arity walker function tailored to which HTML filters are on.
-  # Returns `nil` when no HTML transformation is requested. `sanitize_html`
-  # defaults to `true` so a partially-specified filter map fails loud on the
-  # missing tag/attr keys rather than silently passing unsanitized content.
-  defp node_walker(filters) do
     sanitize? = Map.get(filters, :sanitize_html, true)
     strip_images? = Map.get(filters, :strip_images, false)
 
@@ -103,29 +87,46 @@ defmodule Exoplanet.Filters do
       sanitize? ->
         drop_tags = MapSet.new(filters.drop_tags)
         drop_attrs = MapSet.new(filters.drop_attrs)
-        &walk_node(&1, drop_tags, drop_attrs, strip_images?)
+        walker = &walk_node(&1, drop_tags, drop_attrs, strip_images?)
+        transform_html_fields(post, walker, fn _ -> true end)
 
       strip_images? ->
-        &walk_node(&1, MapSet.new(), MapSet.new(), true)
+        walker = &walk_node(&1, MapSet.new(), MapSet.new(), true)
+        # Short-circuit when html has no <img>: parse/serialize would otherwise
+        # rewrite e.g. `&` → `&amp;` and `<br>` → `<br/>`, breaking byte equality.
+        transform_html_fields(post, walker, &has_img?/1)
 
       true ->
-        nil
+        post
     end
   end
 
-  # Generic HTML transform: parse → walk top-level nodes → serialize. Walker
-  # may drop or expand each node by returning a (possibly empty) list.
-  defp transform_html(nil, _walker), do: nil
-  defp transform_html("", _walker), do: ""
-
-  defp transform_html(html, walker) when is_binary(html) do
-    html
-    |> LazyHTML.from_fragment()
-    |> LazyHTML.to_tree()
-    |> Enum.flat_map(walker)
-    |> LazyHTML.from_tree()
-    |> LazyHTML.to_html()
+  defp transform_html_fields(post, walker, needs?) do
+    post
+    |> Map.update!(:body, &transform_html(&1, walker, needs?))
+    |> Map.update!(:summary, &transform_html(&1, walker, needs?))
   end
+
+  # Generic HTML transform: parse → walk top-level nodes → serialize. Walker
+  # may drop or expand each node by returning a (possibly empty) list. Skips
+  # the parse/serialize round-trip when `needs?` returns false for the input.
+  defp transform_html(nil, _walker, _needs?), do: nil
+  defp transform_html("", _walker, _needs?), do: ""
+
+  defp transform_html(html, walker, needs?) when is_binary(html) do
+    if needs?.(html) do
+      html
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.to_tree()
+      |> Enum.flat_map(walker)
+      |> LazyHTML.from_tree()
+      |> LazyHTML.to_html()
+    else
+      html
+    end
+  end
+
+  defp has_img?(html), do: html =~ ~r/<img\b/i
 
   defp walk_node({tag, attrs, children}, drop_tags, drop_attrs, strip_images?)
        when is_binary(tag) do
