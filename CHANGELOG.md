@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Added
+
+- The RSS parser now reads `<dc:creator>` (Dublin Core) when populating
+  `Exoplanet.Post.authors`, preferring it over the RSS 2.0 `<author>`
+  element. RSS spec'd `<author>` as an email, which most blogs leave empty;
+  `<dc:creator>` is where the human-readable name typically lives.
+
 ## [0.3.0] - 2026-05-02
 
 ### Added

@@ -160,7 +160,7 @@ defmodule Exoplanet.Parser do
               # feeds like Medium put the full HTML article in content:encoded and
               # leave description short or empty.
               content = blank_to_nil(item["content"]) || item["description"]
-              authors = normalize_authors([item["author"]], name)
+              authors = normalize_authors(rss_authors(item), name)
 
               categories =
                 (item["categories"] || []) |> Enum.map(& &1["name"]) |> normalize_categories()
@@ -297,6 +297,17 @@ defmodule Exoplanet.Parser do
     case Enum.reject(authors, &blank?/1) do
       [] -> [fallback]
       kept -> kept
+    end
+  end
+
+  # Prefer Dublin Core <dc:creator> over RSS 2.0 <author>. The RSS spec defines
+  # <author> as an email address; in practice most blogs leave it empty and put
+  # the human name in <dc:creator>. FastRSS exposes the latter as a list under
+  # dublin_core_ext.creators.
+  defp rss_authors(item) do
+    case get_in(item, ["dublin_core_ext", "creators"]) do
+      [_ | _] = creators -> creators
+      _ -> [item["author"]]
     end
   end
 

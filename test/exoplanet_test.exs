@@ -366,6 +366,94 @@ defmodule ExoplanetTest do
     end
   end
 
+  describe "dc:creator" do
+    test "rss: uses <dc:creator> when <author> is absent" do
+      Req.Test.stub(Exoplanet.Parser, fn conn ->
+        data = """
+        <rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+          <channel>
+            <title>DC Creator Test</title>
+            <link>https://dc-creator.example</link>
+            <item>
+              <title>Post With DC Creator</title>
+              <link>https://dc-creator.example/post-1</link>
+              <pubDate>Mon, 14 Dec 2020 00:00:00 +0000</pubDate>
+              <dc:creator>Alice</dc:creator>
+              <description>Body</description>
+            </item>
+          </channel>
+        </rss>
+        """
+
+        Req.Test.html(conn, data)
+      end)
+
+      sources = %{"https://dc-creator.example/feed" => %{name: "Source Name"}}
+      config = build_config(sources: sources)
+      [%Exoplanet.Post{} = post] = Exoplanet.build(config)
+
+      assert post.authors == ["Alice"]
+    end
+
+    test "rss: prefers <dc:creator> over <author> when both are present" do
+      Req.Test.stub(Exoplanet.Parser, fn conn ->
+        data = """
+        <rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+          <channel>
+            <title>DC Creator Test</title>
+            <link>https://dc-creator.example</link>
+            <item>
+              <title>Post With Both Author Fields</title>
+              <link>https://dc-creator.example/post-2</link>
+              <pubDate>Mon, 14 Dec 2020 00:00:00 +0000</pubDate>
+              <dc:creator>Alice</dc:creator>
+              <author>noreply@example.com</author>
+              <description>Body</description>
+            </item>
+          </channel>
+        </rss>
+        """
+
+        Req.Test.html(conn, data)
+      end)
+
+      sources = %{"https://dc-creator.example/feed" => %{name: "Source Name"}}
+      config = build_config(sources: sources)
+      [%Exoplanet.Post{} = post] = Exoplanet.build(config)
+
+      assert post.authors == ["Alice"]
+    end
+
+    test "rss: collects multiple <dc:creator> entries in order" do
+      Req.Test.stub(Exoplanet.Parser, fn conn ->
+        data = """
+        <rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+          <channel>
+            <title>DC Creator Test</title>
+            <link>https://dc-creator.example</link>
+            <item>
+              <title>Post With Multiple Creators</title>
+              <link>https://dc-creator.example/post-3</link>
+              <pubDate>Mon, 14 Dec 2020 00:00:00 +0000</pubDate>
+              <dc:creator>Alice</dc:creator>
+              <dc:creator>Bob</dc:creator>
+              <description>Body</description>
+            </item>
+          </channel>
+        </rss>
+        """
+
+        Req.Test.html(conn, data)
+      end)
+
+      sources = %{"https://dc-creator.example/feed" => %{name: "Source Name"}}
+      config = build_config(sources: sources)
+      [%Exoplanet.Post{} = post] = Exoplanet.build(config)
+
+      assert post.authors == ["Alice", "Bob"]
+    end
+  end
+
   describe "malformed dates" do
     test "rss: unparseable <pubDate> drops only the bad post; siblings survive" do
       Req.Test.stub(Exoplanet.Parser, fn conn ->
