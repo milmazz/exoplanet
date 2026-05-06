@@ -18,7 +18,7 @@ Add `:exoplanet` to your dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:exoplanet, "~> 0.3.0"}
+    {:exoplanet, "~> 0.4"}
   ]
 end
 ```
@@ -38,7 +38,10 @@ Describe your feeds in an `.exs` file that returns a map:
     allow_categories: ["elixir", "erlang"],
     block_categories: [],
     strip_images: false,
-    excerpt_length: nil
+    excerpt_length: nil,
+    sanitize_html: true,
+    drop_tags: ~w(iframe script object embed style base),
+    drop_attrs: ~w(style)
   },
   sources: %{
     "https://milmazz.uno/atom.xml" => %{name: "Milton Mazzarri"},

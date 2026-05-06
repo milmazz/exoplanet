@@ -11,7 +11,10 @@ defmodule Exoplanet.ConfigTest do
                allow_categories: [],
                block_categories: [],
                strip_images: false,
-               excerpt_length: nil
+               excerpt_length: nil,
+               sanitize_html: true,
+               drop_tags: ~w(iframe script object embed style base),
+               drop_attrs: ~w(style)
              }
     end
 
@@ -37,7 +40,10 @@ defmodule Exoplanet.ConfigTest do
                allow_categories: ["elixir"],
                block_categories: ["spam"],
                strip_images: true,
-               excerpt_length: 500
+               excerpt_length: 500,
+               sanitize_html: true,
+               drop_tags: ~w(iframe script object embed style base),
+               drop_attrs: ~w(style)
              }
     end
 

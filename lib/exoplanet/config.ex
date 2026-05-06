@@ -33,12 +33,7 @@ defmodule Exoplanet.Config do
     new_feed_items: 4,
     feed_timeout: 20,
     items: 60,
-    default_filters: %{
-      allow_categories: [],
-      block_categories: [],
-      strip_images: false,
-      excerpt_length: nil
-    }
+    default_filters: Exoplanet.Filters.defaults()
   ]
 
   @doc """
@@ -50,7 +45,8 @@ defmodule Exoplanet.Config do
   @spec from_file(Path.t()) :: t()
   def from_file(path) when is_binary(path) do
     {attrs, _} = Code.eval_file(path)
-    struct!(__MODULE__, Map.take(attrs, recognized_keys()))
+    config = struct!(__MODULE__, Map.take(attrs, recognized_keys()))
+    %{config | default_filters: Map.merge(Exoplanet.Filters.defaults(), config.default_filters)}
   end
 
   defp recognized_keys, do: Enum.map(__MODULE__.__info__(:struct), & &1.field)

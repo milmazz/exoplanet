@@ -16,7 +16,10 @@
     allow_categories: ["elixir", "erlang", "gleam", "otp", "beam"],
     block_categories: ["personal", "food", "travel"],
     strip_images: false,
-    excerpt_length: nil
+    excerpt_length: nil,
+    sanitize_html: true,
+    drop_tags: ~w(iframe script object embed style base),
+    drop_attrs: ~w(style)
   },
 
   # Required: feed sources. Each entry can carry optional metadata that

@@ -269,17 +269,73 @@ defmodule Exoplanet.FiltersTest do
     end
   end
 
+  describe "apply/2 — sanitize_html" do
+    test "drops the full subtree of a dropped tag from body" do
+      post = post(body: "<p>Good</p><iframe src=\"evil.com\"></iframe>")
+      [result] = Filters.apply([post], filters(sanitize_html: true))
+      refute result.body =~ "iframe"
+      assert result.body =~ "Good"
+    end
+
+    test "strips dropped attributes from remaining elements" do
+      post = post(body: ~s(<p style="color:red">Text</p>))
+      [result] = Filters.apply([post], filters(sanitize_html: true))
+      refute result.body =~ "style"
+      assert result.body =~ "Text"
+    end
+
+    test "sanitize_html: false leaves content unchanged" do
+      body = ~s(<iframe src="evil.com"></iframe><p style="color:red">Text</p>)
+      post = post(body: body)
+      [result] = Filters.apply([post], filters(sanitize_html: false))
+      assert result.body == body
+    end
+
+    test "per-feed drop_tags replaces the default — iframe survives when only script is dropped" do
+      body = "<script>evil()</script><iframe src=\"x.com\"></iframe>"
+      post = post(body: body)
+      [result] = Filters.apply([post], filters(sanitize_html: true, drop_tags: ~w(script)))
+      refute result.body =~ "script"
+      assert result.body =~ "iframe"
+    end
+
+    test "nil body and nil summary pass through unchanged" do
+      post = post(body: nil, summary: nil)
+      [result] = Filters.apply([post], filters(sanitize_html: true))
+      assert result.body == nil
+      assert result.summary == nil
+    end
+
+    test "empty string body passes through unchanged" do
+      post = post(body: "")
+      [result] = Filters.apply([post], filters(sanitize_html: true))
+      assert result.body == ""
+    end
+
+    test "sanitizes before strip_images: iframe removed, img replaced by link" do
+      body = ~s(<iframe src="bad.com"></iframe><img src="pic.jpg" alt="Photo">)
+      post = post(body: body)
+      [result] = Filters.apply([post], filters(sanitize_html: true, strip_images: true))
+      refute result.body =~ "iframe"
+      refute result.body =~ "<img"
+      assert result.body =~ ~s(href="pic.jpg")
+      assert result.body =~ "Photo"
+    end
+
+    test "sanitizes summary field as well as body" do
+      post = post(summary: "<script>evil()</script>text")
+      [result] = Filters.apply([post], filters(sanitize_html: true))
+      refute result.summary =~ "script"
+      assert result.summary =~ "text"
+    end
+  end
+
   # Filter map with empty/false defaults; pass overrides as a keyword list or map.
+  # Starts from `Filters.defaults/0` and turns sanitize_html off so individual
+  # tests opt into HTML transformation explicitly.
   defp filters(overrides \\ []) do
-    Map.merge(
-      %{
-        allow_categories: [],
-        block_categories: [],
-        strip_images: false,
-        excerpt_length: nil
-      },
-      Map.new(overrides)
-    )
+    base = %{Filters.defaults() | sanitize_html: false}
+    Map.merge(base, Map.new(overrides))
   end
 
   # Placeholder Post struct; pass a keyword list of overrides to set fields.

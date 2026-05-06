@@ -1,16 +1,39 @@
 defmodule Exoplanet.Filters do
   @moduledoc """
-  Per-feed content filters: category allow/block lists, image stripping,
-  and summary truncation. See the Per-Feed Configuration design spec for
-  semantics.
+  Per-feed content filters: HTML sanitization, category allow/block lists,
+  image stripping, and summary truncation. The sanitizer removes dangerous
+  tags and style attributes but the *default configuration* does not filter
+  attribute-based injection vectors such as `on*` event handlers or
+  `javascript:` URIs.
   """
 
   @type t :: %{
           allow_categories: [String.t()],
           block_categories: [String.t()],
           strip_images: boolean(),
-          excerpt_length: pos_integer() | nil
+          excerpt_length: pos_integer() | nil,
+          sanitize_html: boolean(),
+          drop_tags: [String.t()],
+          drop_attrs: [String.t()]
         }
+
+  @defaults %{
+    allow_categories: [],
+    block_categories: [],
+    strip_images: false,
+    excerpt_length: nil,
+    sanitize_html: true,
+    drop_tags: ~w(iframe script object embed style base),
+    drop_attrs: ~w(style)
+  }
+
+  @doc """
+  Built-in default filter map. Used by `Exoplanet.Config` as the baseline
+  for `default_filters` and as the starting point that user-supplied
+  `default_filters` are merged onto.
+  """
+  @spec defaults() :: t()
+  def defaults, do: @defaults
 
   @doc """
   Merges a per-feed filter map onto a default filter map.
@@ -33,8 +56,10 @@ defmodule Exoplanet.Filters do
   Applies the merged filter map to a list of `Exoplanet.Post` structs.
 
   Returns the filtered list. Posts dropped by category filters are removed
-  entirely. The `strip_images` and `excerpt_length` filters modify each
-  post's `summary` (and HTML body for image stripping).
+  entirely. The `sanitize_html` and `strip_images` filters modify each post's
+  `:body` and `:summary`. The `excerpt_length` filter modifies only `:summary`.
+  Sanitization runs first, then image stripping, then excerpt generation.
+  When both HTML filters are enabled they share a single tree walk.
   """
   @spec apply([Exoplanet.Post.t()], t()) :: [Exoplanet.Post.t()]
   def apply(posts, filters) do
@@ -48,17 +73,93 @@ defmodule Exoplanet.Filters do
 
   defp transform(post, filters) do
     post
-    |> apply_image_stripping(filters)
+    |> apply_html_filters(filters)
     |> apply_excerpt(filters)
   end
 
-  defp apply_image_stripping(post, %{strip_images: true}) do
-    post
-    |> Map.update!(:body, &maybe_strip_images/1)
-    |> Map.update!(:summary, &maybe_strip_images/1)
+  # Single tree walk that fuses sanitization and image stripping. Returns the
+  # post unchanged when neither filter is enabled (no parse/serialize cost).
+  defp apply_html_filters(post, filters) do
+    sanitize? = Map.get(filters, :sanitize_html, true)
+    strip_images? = Map.get(filters, :strip_images, false)
+
+    cond do
+      sanitize? ->
+        drop_tags = MapSet.new(filters.drop_tags)
+        drop_attrs = MapSet.new(filters.drop_attrs)
+        walker = &walk_node(&1, drop_tags, drop_attrs, strip_images?)
+        transform_html_fields(post, walker, fn _ -> true end)
+
+      strip_images? ->
+        walker = &walk_node(&1, MapSet.new(), MapSet.new(), true)
+        # Short-circuit when html has no <img>: parse/serialize would otherwise
+        # rewrite e.g. `&` → `&amp;` and `<br>` → `<br/>`, breaking byte equality.
+        transform_html_fields(post, walker, &has_img?/1)
+
+      true ->
+        post
+    end
   end
 
-  defp apply_image_stripping(post, _filters), do: post
+  defp transform_html_fields(post, walker, needs?) do
+    post
+    |> Map.update!(:body, &transform_html(&1, walker, needs?))
+    |> Map.update!(:summary, &transform_html(&1, walker, needs?))
+  end
+
+  # Generic HTML transform: parse → walk top-level nodes → serialize. Walker
+  # may drop or expand each node by returning a (possibly empty) list. Skips
+  # the parse/serialize round-trip when `needs?` returns false for the input.
+  defp transform_html(nil, _walker, _needs?), do: nil
+  defp transform_html("", _walker, _needs?), do: ""
+
+  defp transform_html(html, walker, needs?) when is_binary(html) do
+    if needs?.(html) do
+      html
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.to_tree()
+      |> Enum.flat_map(walker)
+      |> LazyHTML.from_tree()
+      |> LazyHTML.to_html()
+    else
+      html
+    end
+  end
+
+  defp has_img?(html), do: html =~ ~r/<img\b/i
+
+  defp walk_node({tag, attrs, children}, drop_tags, drop_attrs, strip_images?)
+       when is_binary(tag) do
+    cond do
+      tag in drop_tags ->
+        []
+
+      strip_images? and tag == "img" ->
+        image_replacement(attr_value(attrs, "alt"), attr_value(attrs, "src"))
+
+      true ->
+        clean_attrs = Enum.reject(attrs, fn {name, _} -> name in drop_attrs end)
+
+        clean_children =
+          Enum.flat_map(children, &walk_node(&1, drop_tags, drop_attrs, strip_images?))
+
+        [{tag, clean_attrs, clean_children}]
+    end
+  end
+
+  defp walk_node(node, _drop_tags, _drop_attrs, _strip_images?), do: [node]
+
+  # alt="" is HTML5 for "decorative image" — drop it the same as missing alt.
+  defp image_replacement(nil, _src), do: []
+  defp image_replacement("", _src), do: []
+  # Plain text only when there's no src.
+  defp image_replacement(alt, nil), do: [alt]
+  # Hyperlink with alt text when both are present.
+  defp image_replacement(alt, src), do: [{"a", [{"href", src}], [alt]}]
+
+  defp attr_value(attrs, name) do
+    Enum.find_value(attrs, fn {k, v} -> if k == name, do: v end)
+  end
 
   defp apply_excerpt(post, %{excerpt_length: n}) when is_integer(n) and n > 0 do
     %{post | summary: compute_excerpt(post.summary, post.body, n)}
@@ -121,50 +222,6 @@ defmodule Exoplanet.Filters do
 
       truncated <> "…"
     end
-  end
-
-  defp maybe_strip_images(nil), do: nil
-  defp maybe_strip_images(""), do: ""
-
-  defp maybe_strip_images(html) when is_binary(html) do
-    if String.contains?(html, "<img") do
-      html
-      |> LazyHTML.from_fragment()
-      |> LazyHTML.to_tree()
-      |> strip_images_tree()
-      |> LazyHTML.from_tree()
-      |> LazyHTML.to_html()
-    else
-      html
-    end
-  end
-
-  defp strip_images_tree(tree) when is_list(tree) do
-    Enum.flat_map(tree, &strip_images_node/1)
-  end
-
-  defp strip_images_node({"img", attrs, _children}) do
-    alt = attr_value(attrs, "alt")
-    src = attr_value(attrs, "src")
-    image_replacement(alt, src)
-  end
-
-  defp strip_images_node({tag, attrs, children}) when is_binary(tag) do
-    [{tag, attrs, strip_images_tree(children)}]
-  end
-
-  defp strip_images_node(other), do: [other]
-
-  # alt="" is HTML5 for "decorative image" — drop it the same as missing alt.
-  defp image_replacement(nil, _src), do: []
-  defp image_replacement("", _src), do: []
-  # Plain text only when there's no src.
-  defp image_replacement(alt, nil), do: [alt]
-  # Hyperlink with alt text when both are present.
-  defp image_replacement(alt, src), do: [{"a", [{"href", src}], [alt]}]
-
-  defp attr_value(attrs, name) do
-    Enum.find_value(attrs, fn {k, v} -> if k == name, do: v end)
   end
 
   defp keep?(post, allow_lower, block_lower) do

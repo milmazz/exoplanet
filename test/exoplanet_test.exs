@@ -269,7 +269,10 @@ defmodule ExoplanetTest do
           allow_categories: ["elixir"],
           block_categories: [],
           strip_images: false,
-          excerpt_length: nil
+          excerpt_length: nil,
+          sanitize_html: false,
+          drop_tags: [],
+          drop_attrs: []
         }
       }
 
