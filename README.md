@@ -40,7 +40,7 @@ Describe your feeds in an `.exs` file that returns a map:
     strip_images: false,
     excerpt_length: nil,
     sanitize_html: true,
-    drop_tags: ~w(iframe script object embed),
+    drop_tags: ~w(iframe script object embed style base),
     drop_attrs: ~w(style)
   },
   sources: %{
