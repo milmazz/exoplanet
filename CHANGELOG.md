@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [0.4.0] - 2026-05-06
+
 ### Added
 
 - The RSS parser now reads `<dc:creator>` (Dublin Core) when populating
@@ -137,7 +139,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release.
 
-[unreleased]: https://github.com/milmazz/exoplanet/compare/v0.3.0...HEAD
+[unreleased]: https://github.com/milmazz/exoplanet/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/milmazz/exoplanet/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/milmazz/exoplanet/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/milmazz/exoplanet/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/milmazz/exoplanet/releases/tag/v0.1.0
