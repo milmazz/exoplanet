@@ -53,7 +53,10 @@ defmodule Exoplanet.Config do
   @spec from_file(Path.t()) :: t()
   def from_file(path) when is_binary(path) do
     {attrs, _} = Code.eval_file(path)
-    struct!(__MODULE__, Map.take(attrs, recognized_keys()))
+    config = struct!(__MODULE__, Map.take(attrs, recognized_keys()))
+
+    default = %__MODULE__{sources: %{}}.default_filters
+    %{config | default_filters: Map.merge(default, config.default_filters)}
   end
 
   defp recognized_keys, do: Enum.map(__MODULE__.__info__(:struct), & &1.field)
