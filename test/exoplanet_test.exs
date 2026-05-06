@@ -271,8 +271,8 @@ defmodule ExoplanetTest do
           strip_images: false,
           excerpt_length: nil,
           sanitize_html: false,
-          dropped_tags: [],
-          dropped_attrs: []
+          drop_tags: [],
+          drop_attrs: []
         }
       }
 

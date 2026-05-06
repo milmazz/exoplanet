@@ -291,10 +291,10 @@ defmodule Exoplanet.FiltersTest do
       assert result.body == body
     end
 
-    test "per-feed dropped_tags replaces the default — iframe survives when only script is dropped" do
+    test "per-feed drop_tags replaces the default — iframe survives when only script is dropped" do
       body = "<script>evil()</script><iframe src=\"x.com\"></iframe>"
       post = post(body: body)
-      [result] = Filters.apply([post], filters(sanitize_html: true, dropped_tags: ~w(script)))
+      [result] = Filters.apply([post], filters(sanitize_html: true, drop_tags: ~w(script)))
       refute result.body =~ "script"
       assert result.body =~ "iframe"
     end
@@ -331,19 +331,11 @@ defmodule Exoplanet.FiltersTest do
   end
 
   # Filter map with empty/false defaults; pass overrides as a keyword list or map.
+  # Starts from `Filters.defaults/0` and turns sanitize_html off so individual
+  # tests opt into HTML transformation explicitly.
   defp filters(overrides \\ []) do
-    Map.merge(
-      %{
-        allow_categories: [],
-        block_categories: [],
-        strip_images: false,
-        excerpt_length: nil,
-        sanitize_html: false,
-        dropped_tags: ~w(iframe script object embed),
-        dropped_attrs: ~w(style)
-      },
-      Map.new(overrides)
-    )
+    base = %{Filters.defaults() | sanitize_html: false}
+    Map.merge(base, Map.new(overrides))
   end
 
   # Placeholder Post struct; pass a keyword list of overrides to set fields.

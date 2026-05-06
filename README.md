@@ -40,8 +40,8 @@ Describe your feeds in an `.exs` file that returns a map:
     strip_images: false,
     excerpt_length: nil,
     sanitize_html: true,
-    dropped_tags: ~w(iframe script object embed),
-    dropped_attrs: ~w(style)
+    drop_tags: ~w(iframe script object embed style base),
+    drop_attrs: ~w(style)
   },
   sources: %{
     "https://milmazz.uno/atom.xml" => %{name: "Milton Mazzarri"},
