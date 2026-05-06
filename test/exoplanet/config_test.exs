@@ -11,7 +11,10 @@ defmodule Exoplanet.ConfigTest do
                allow_categories: [],
                block_categories: [],
                strip_images: false,
-               excerpt_length: nil
+               excerpt_length: nil,
+               sanitize_html: true,
+               dropped_tags: ~w(iframe script object embed),
+               dropped_attrs: ~w(style)
              }
     end
 

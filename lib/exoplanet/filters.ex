@@ -9,7 +9,10 @@ defmodule Exoplanet.Filters do
           allow_categories: [String.t()],
           block_categories: [String.t()],
           strip_images: boolean(),
-          excerpt_length: pos_integer() | nil
+          excerpt_length: pos_integer() | nil,
+          sanitize_html: boolean(),
+          dropped_tags: [String.t()],
+          dropped_attrs: [String.t()]
         }
 
   @doc """
@@ -48,9 +51,45 @@ defmodule Exoplanet.Filters do
 
   defp transform(post, filters) do
     post
+    |> apply_sanitization(filters)
     |> apply_image_stripping(filters)
     |> apply_excerpt(filters)
   end
+
+  defp apply_sanitization(post, %{sanitize_html: false}), do: post
+
+  defp apply_sanitization(post, %{dropped_tags: dropped_tags, dropped_attrs: dropped_attrs}) do
+    post
+    |> Map.update!(:body, &scrub_html(&1, dropped_tags, dropped_attrs))
+    |> Map.update!(:summary, &scrub_html(&1, dropped_tags, dropped_attrs))
+  end
+
+  defp apply_sanitization(post, _filters), do: post
+
+  defp scrub_html(nil, _dropped_tags, _dropped_attrs), do: nil
+  defp scrub_html("", _dropped_tags, _dropped_attrs), do: ""
+
+  defp scrub_html(html, dropped_tags, dropped_attrs) when is_binary(html) do
+    html
+    |> LazyHTML.from_fragment()
+    |> LazyHTML.to_tree()
+    |> Enum.flat_map(&scrub_node(&1, dropped_tags, dropped_attrs))
+    |> LazyHTML.from_tree()
+    |> LazyHTML.to_html()
+  end
+
+  defp scrub_node({tag, attrs, children}, dropped_tags, dropped_attrs) when is_binary(tag) do
+    if tag in dropped_tags do
+      []
+    else
+      clean_attrs = Enum.reject(attrs, fn {name, _} -> name in dropped_attrs end)
+      clean_children = Enum.flat_map(children, &scrub_node(&1, dropped_tags, dropped_attrs))
+      [{tag, clean_attrs, clean_children}]
+    end
+  end
+
+  defp scrub_node({:comment, _} = node, _dropped_tags, _dropped_attrs), do: [node]
+  defp scrub_node(text, _dropped_tags, _dropped_attrs) when is_binary(text), do: [text]
 
   defp apply_image_stripping(post, %{strip_images: true}) do
     post
