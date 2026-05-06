@@ -13,8 +13,8 @@ defmodule Exoplanet.ConfigTest do
                strip_images: false,
                excerpt_length: nil,
                sanitize_html: true,
-               dropped_tags: ~w(iframe script object embed),
-               dropped_attrs: ~w(style)
+               drop_tags: ~w(iframe script object embed),
+               drop_attrs: ~w(style)
              }
     end
 
@@ -42,8 +42,8 @@ defmodule Exoplanet.ConfigTest do
                strip_images: true,
                excerpt_length: 500,
                sanitize_html: true,
-               dropped_tags: ~w(iframe script object embed),
-               dropped_attrs: ~w(style)
+               drop_tags: ~w(iframe script object embed),
+               drop_attrs: ~w(style)
              }
     end
 

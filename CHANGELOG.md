@@ -16,8 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Exoplanet.Filters` now sanitizes post bodies and summaries by default.
   Dangerous tags (`iframe`, `script`, `object`, `embed`) are removed entirely;
   `style` attributes are stripped from all remaining elements. Three new filter
-  keys control the behaviour: `sanitize_html` (default `true`), `dropped_tags`
-  (default `~w(iframe script object embed)`), and `dropped_attrs` (default
+  keys control the behaviour: `sanitize_html` (default `true`), `drop_tags`
+  (default `~w(iframe script object embed)`), and `drop_attrs` (default
   `~w(style)`). All three follow the same per-feed override semantics as
   existing filter keys. Set `sanitize_html: false` per feed to opt out.
 - `Exoplanet.Config.from_file/1` now merges user-supplied `default_filters` onto the

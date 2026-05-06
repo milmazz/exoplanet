@@ -13,8 +13,8 @@ defmodule Exoplanet.Filters do
           strip_images: boolean(),
           excerpt_length: pos_integer() | nil,
           sanitize_html: boolean(),
-          dropped_tags: [String.t()],
-          dropped_attrs: [String.t()]
+          drop_tags: [String.t()],
+          drop_attrs: [String.t()]
         }
 
   @defaults %{
@@ -23,8 +23,8 @@ defmodule Exoplanet.Filters do
     strip_images: false,
     excerpt_length: nil,
     sanitize_html: true,
-    dropped_tags: ~w(iframe script object embed),
-    dropped_attrs: ~w(style)
+    drop_tags: ~w(iframe script object embed),
+    drop_attrs: ~w(style)
   }
 
   @doc """
@@ -101,9 +101,9 @@ defmodule Exoplanet.Filters do
 
     cond do
       sanitize? ->
-        dropped_tags = MapSet.new(filters.dropped_tags)
-        dropped_attrs = MapSet.new(filters.dropped_attrs)
-        &walk_node(&1, dropped_tags, dropped_attrs, strip_images?)
+        drop_tags = MapSet.new(filters.drop_tags)
+        drop_attrs = MapSet.new(filters.drop_attrs)
+        &walk_node(&1, drop_tags, drop_attrs, strip_images?)
 
       strip_images? ->
         &walk_node(&1, MapSet.new(), MapSet.new(), true)
@@ -127,26 +127,26 @@ defmodule Exoplanet.Filters do
     |> LazyHTML.to_html()
   end
 
-  defp walk_node({tag, attrs, children}, dropped_tags, dropped_attrs, strip_images?)
+  defp walk_node({tag, attrs, children}, drop_tags, drop_attrs, strip_images?)
        when is_binary(tag) do
     cond do
-      tag in dropped_tags ->
+      tag in drop_tags ->
         []
 
       strip_images? and tag == "img" ->
         image_replacement(attr_value(attrs, "alt"), attr_value(attrs, "src"))
 
       true ->
-        clean_attrs = Enum.reject(attrs, fn {name, _} -> name in dropped_attrs end)
+        clean_attrs = Enum.reject(attrs, fn {name, _} -> name in drop_attrs end)
 
         clean_children =
-          Enum.flat_map(children, &walk_node(&1, dropped_tags, dropped_attrs, strip_images?))
+          Enum.flat_map(children, &walk_node(&1, drop_tags, drop_attrs, strip_images?))
 
         [{tag, clean_attrs, clean_children}]
     end
   end
 
-  defp walk_node(node, _dropped_tags, _dropped_attrs, _strip_images?), do: [node]
+  defp walk_node(node, _drop_tags, _drop_attrs, _strip_images?), do: [node]
 
   # alt="" is HTML5 for "decorative image" — drop it the same as missing alt.
   defp image_replacement(nil, _src), do: []

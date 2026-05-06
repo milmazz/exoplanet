@@ -291,10 +291,10 @@ defmodule Exoplanet.FiltersTest do
       assert result.body == body
     end
 
-    test "per-feed dropped_tags replaces the default — iframe survives when only script is dropped" do
+    test "per-feed drop_tags replaces the default — iframe survives when only script is dropped" do
       body = "<script>evil()</script><iframe src=\"x.com\"></iframe>"
       post = post(body: body)
-      [result] = Filters.apply([post], filters(sanitize_html: true, dropped_tags: ~w(script)))
+      [result] = Filters.apply([post], filters(sanitize_html: true, drop_tags: ~w(script)))
       refute result.body =~ "script"
       assert result.body =~ "iframe"
     end
