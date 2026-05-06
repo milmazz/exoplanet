@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (default `~w(iframe script object embed)`), and `dropped_attrs` (default
   `~w(style)`). All three follow the same per-feed override semantics as
   existing filter keys. Set `sanitize_html: false` per feed to opt out.
-- `Config.from_file/1` now merges user-supplied `default_filters` onto the
+- `Exoplanet.Config.from_file/1` now merges user-supplied `default_filters` onto the
   built-in defaults, so config files that specify only a subset of filter keys
   receive the remaining defaults automatically. Existing config files require
   no changes.
