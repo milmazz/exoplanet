@@ -10,6 +10,7 @@ defmodule Exoplanet.MixProject do
       elixir: "~> 1.17",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
+      aliases: aliases(),
       deps: deps(),
       # Docs
       name: "Exoplanet",
@@ -27,6 +28,10 @@ defmodule Exoplanet.MixProject do
     [
       extra_applications: [:logger]
     ]
+  end
+
+  def cli do
+    [preferred_envs: [precommit: :test]]
   end
 
   defp elixirc_paths(:test), do: ["lib", "test/support"]
@@ -48,6 +53,18 @@ defmodule Exoplanet.MixProject do
     [
       main: "readme",
       extras: ["README.md", "CHANGELOG.md"]
+    ]
+  end
+
+  defp aliases do
+    [
+      precommit: [
+        "compile --warnings-as-errors",
+        "format --check-formatted",
+        "deps.unlock --check-unused",
+        "docs --warnings-as-errors",
+        "test"
+      ]
     ]
   end
 

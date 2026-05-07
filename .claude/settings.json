@@ -1,0 +1,31 @@
+{
+  "model": "opus",
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true
+  },
+  "outputStyle": "explanatory",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null); case \"$branch\" in main|master) echo \"Refusing to edit on '$branch'. Create a feature branch first: git checkout -b <feature-name>\" >&2; exit 2 ;; esac"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -o pipefail -c 'mix precommit 2>&1 | tail -20'"
+          }
+        ]
+      }
+    ]
+  }
+}
