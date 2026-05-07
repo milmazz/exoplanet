@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Fixed
+
+- `Exoplanet.build/1` no longer raises `KeyError` when a partial
+  `default_filters` map is supplied via direct struct construction (e.g.
+  `%Exoplanet.Config{default_filters: %{allow_categories: [...]}}`). Missing
+  keys are now filled in from `Exoplanet.Filters.defaults/0`. The
+  `Exoplanet.Config.from_file/1` path was already unaffected.
+
 ## [0.4.0] - 2026-05-06
 
 ### Added
