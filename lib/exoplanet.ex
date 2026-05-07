@@ -17,6 +17,12 @@ defmodule Exoplanet do
   """
   @spec build(Exoplanet.Config.t()) :: [Exoplanet.Post.t()]
   def build(%Exoplanet.Config{sources: sources, default_filters: defaults} = config) do
+    # Defensively fill missing keys from library defaults so direct struct
+    # construction with a partial `default_filters` map doesn't crash later
+    # in `Filters.apply/2`. `Config.from_file/1` already does this, so the
+    # merge is a no-op for that path.
+    defaults = Exoplanet.Filters.merge(Exoplanet.Filters.defaults(), defaults)
+
     sources
     |> Task.async_stream(
       fn {_url, attrs} = source ->

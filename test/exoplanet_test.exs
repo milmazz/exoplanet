@@ -258,25 +258,18 @@ defmodule ExoplanetTest do
     test "filters apply per-source before Enum.take(new_feed_items)" do
       stub_feed(:atom_six_entries_for_filters)
 
-      url = "https://filters-test.example/feed.xml"
-
-      config = %Exoplanet.Config{
-        sources: %{url => %{name: "F"}},
-        new_feed_items: 4,
-        items: 60,
-        feed_timeout: 5,
-        default_filters: %{
-          allow_categories: ["elixir"],
-          block_categories: [],
-          strip_images: false,
-          excerpt_length: nil,
-          sanitize_html: false,
-          drop_tags: [],
-          drop_attrs: []
-        }
-      }
-
-      posts = Exoplanet.build(config)
+      posts =
+        Exoplanet.build(
+          filter_test_config(%{
+            allow_categories: ["elixir"],
+            block_categories: [],
+            strip_images: false,
+            excerpt_length: nil,
+            sanitize_html: false,
+            drop_tags: [],
+            drop_attrs: []
+          })
+        )
 
       # 5 entries match the allowlist (1, 2, 3, 5, 6); entry 4 (personal) does not.
       # If filtering ran AFTER Enum.take(4), we'd take entries 1-4 and then drop
@@ -284,6 +277,78 @@ defmodule ExoplanetTest do
       assert length(posts) == 4
       titles = Enum.map(posts, & &1.title)
       refute "Four" in titles
+    end
+
+    test "fills missing keys from library defaults when default_filters is partial" do
+      stub_feed(:atom_six_entries_for_filters)
+
+      # Omits sanitize_html / drop_tags / drop_attrs. Before the fix
+      # `Filters.apply/2` raised KeyError on `filters.drop_tags` when the
+      # sanitize? branch ran with `sanitize_html` defaulted to true.
+      posts =
+        Exoplanet.build(
+          filter_test_config(%{
+            allow_categories: ["elixir"],
+            block_categories: [],
+            strip_images: false,
+            excerpt_length: nil
+          })
+        )
+
+      assert length(posts) == 4
+      refute "Four" in Enum.map(posts, & &1.title)
+    end
+
+    test "fills missing list-typed keys (allow/block_categories) from library defaults" do
+      stub_feed(:atom_six_entries_for_filters)
+
+      # Omits both list-typed keys; library defaults are `[]` (allow all,
+      # block none), so the "personal" entry is no longer filtered out.
+      posts =
+        Exoplanet.build(
+          filter_test_config(%{
+            strip_images: false,
+            excerpt_length: nil,
+            sanitize_html: false,
+            drop_tags: [],
+            drop_attrs: []
+          })
+        )
+
+      titles = Enum.map(posts, & &1.title)
+      assert "Four" in titles
+    end
+
+    test "applies library default sanitize_html when user omits it" do
+      url = "https://sanitize-test.example/feed.xml"
+
+      Req.Test.stub(Exoplanet.Parser, fn conn ->
+        Req.Test.html(conn, """
+        <?xml version="1.0" encoding="utf-8"?>
+        <feed xmlns="http://www.w3.org/2005/Atom">
+          <title>S</title>
+          <id>tag:sanitize-test</id>
+          <updated>2026-01-01T00:00:00Z</updated>
+          <entry>
+            <id>1</id><title>Has script</title>
+            <updated>2026-01-01T00:00:00Z</updated>
+            <published>2026-01-01T00:00:00Z</published>
+            <content type="html">&lt;p&gt;safe&lt;/p&gt;&lt;script&gt;alert(1)&lt;/script&gt;</content>
+          </entry>
+        </feed>
+        """)
+      end)
+
+      [post] =
+        Exoplanet.build(%Exoplanet.Config{
+          sources: %{url => %{name: "S"}},
+          feed_timeout: 5,
+          default_filters: %{}
+        })
+
+      refute post.body =~ "<script"
+      refute post.body =~ "alert(1)"
+      assert post.body =~ "safe"
     end
   end
 
@@ -458,4 +523,14 @@ defmodule ExoplanetTest do
   end
 
   defp build_config(opts), do: struct!(Exoplanet.Config, opts)
+
+  defp filter_test_config(default_filters) do
+    %Exoplanet.Config{
+      sources: %{"https://filters-test.example/feed.xml" => %{name: "F"}},
+      new_feed_items: 4,
+      items: 60,
+      feed_timeout: 5,
+      default_filters: default_filters
+    }
+  end
 end
