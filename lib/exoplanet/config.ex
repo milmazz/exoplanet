@@ -46,7 +46,13 @@ defmodule Exoplanet.Config do
   def from_file(path) when is_binary(path) do
     {attrs, _} = Code.eval_file(path)
     config = struct!(__MODULE__, Map.take(attrs, recognized_keys()))
-    %{config | default_filters: Map.merge(Exoplanet.Filters.defaults(), config.default_filters)}
+
+    merged_filters =
+      Exoplanet.Filters.defaults()
+      |> Map.merge(config.default_filters)
+      |> Exoplanet.Filters.normalize_categories()
+
+    %{config | default_filters: merged_filters}
   end
 
   defp recognized_keys, do: Enum.map(__MODULE__.__info__(:struct), & &1.field)
