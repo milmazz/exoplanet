@@ -5,11 +5,21 @@ defmodule Exoplanet.Filters do
   tags and style attributes but the *default configuration* does not filter
   attribute-based injection vectors such as `on*` event handlers or
   `javascript:` URIs.
+
+  ## Category filters
+
+  `allow_categories` accepts a list of strings or `:all` (no allowlist
+  constraint). `block_categories` accepts a list of strings or `:none` (no
+  blocklist constraint). The empty list `[]` is equivalent to `:all` /
+  `:none` respectively and remains supported. Atoms are normalized to `[]`
+  internally; see `normalize_categories/1`. The inverses
+  (`allow_categories: :none`, `block_categories: :all`) raise
+  `ArgumentError` — drop the feed entirely if you want zero posts.
   """
 
   @type t :: %{
-          allow_categories: [String.t()],
-          block_categories: [String.t()],
+          allow_categories: [String.t()] | :all,
+          block_categories: [String.t()] | :none,
           strip_images: boolean(),
           excerpt_length: pos_integer() | nil,
           sanitize_html: boolean(),
