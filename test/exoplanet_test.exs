@@ -224,6 +224,32 @@ defmodule ExoplanetTest do
   end
 
   describe "ordering" do
+    test "per-feed cap keeps the chronologically newest entries, not document-order entries" do
+      # Regression: `Exoplanet.build/1` previously called
+      # `Enum.take(config.new_feed_items)` on the post-filter list while
+      # the entries were still in feed-document order. For feeds that
+      # don't list entries newest-first, the older entries got picked
+      # and the genuinely-recent ones were silently dropped before the
+      # global merge-sort.
+      stub_feed(:atom_unordered)
+
+      sources = %{"https://unordered.example/feed.xml" => %{name: "U"}}
+
+      posts =
+        Exoplanet.build(%Exoplanet.Config{
+          sources: sources,
+          new_feed_items: 2,
+          items: 60,
+          feed_timeout: 5,
+          default_filters: %{}
+        })
+
+      assert length(posts) == 2
+
+      titles = Enum.map(posts, & &1.title)
+      assert titles == ["Newest Third", "Mid Fourth"]
+    end
+
     test "orders posts by published date in descending order" do
       stub_feeds(%{
         "milmazz.uno" => :atom,
