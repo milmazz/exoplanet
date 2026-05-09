@@ -36,6 +36,48 @@ defmodule Exoplanet.Filters do
   def defaults, do: @defaults
 
   @doc """
+  Normalizes the category-filter atoms in a filter map.
+
+  Replaces `allow_categories: :all` with `[]` and `block_categories: :none`
+  with `[]`. Lists pass through unchanged. Keys that are missing stay
+  missing (no defaults are inserted). Raises `ArgumentError` for any
+  other atom value, including `allow_categories: :none` and
+  `block_categories: :all` (both nonsensical — drop the feed instead).
+
+  Called automatically by `merge/2` and `Exoplanet.Config.from_file/1`,
+  so consumers rarely need to invoke it directly.
+  """
+  @spec normalize_categories(map()) :: map()
+  def normalize_categories(filters) when is_map(filters) do
+    filters
+    |> normalize_key(:allow_categories, :all, :none)
+    |> normalize_key(:block_categories, :none, :all)
+  end
+
+  defp normalize_key(filters, key, ok_atom, bad_atom) do
+    case Map.fetch(filters, key) do
+      :error ->
+        filters
+
+      {:ok, list} when is_list(list) ->
+        filters
+
+      {:ok, ^ok_atom} ->
+        Map.put(filters, key, [])
+
+      {:ok, ^bad_atom} ->
+        raise ArgumentError,
+              "#{inspect(key)} does not accept #{inspect(bad_atom)} " <>
+                "(valid forms are a list of strings or #{inspect(ok_atom)})"
+
+      {:ok, other} ->
+        raise ArgumentError,
+              "#{inspect(key)} must be a list of strings or #{inspect(ok_atom)}, " <>
+                "got: #{inspect(other)}"
+    end
+  end
+
+  @doc """
   Merges a per-feed filter map onto a default filter map.
 
   `allow_categories` and `block_categories` REPLACE the default value when

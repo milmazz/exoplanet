@@ -3,6 +3,58 @@ defmodule Exoplanet.FiltersTest do
 
   alias Exoplanet.Filters
 
+  describe "normalize_categories/1" do
+    test "passes lists through unchanged" do
+      input = %{allow_categories: ["a"], block_categories: ["b"]}
+      assert Filters.normalize_categories(input) == input
+    end
+
+    test "normalizes allow_categories: :all to []" do
+      assert Filters.normalize_categories(%{allow_categories: :all}) ==
+               %{allow_categories: []}
+    end
+
+    test "normalizes block_categories: :none to []" do
+      assert Filters.normalize_categories(%{block_categories: :none}) ==
+               %{block_categories: []}
+    end
+
+    test "leaves unrelated keys untouched" do
+      input = %{allow_categories: :all, strip_images: true, drop_tags: ["x"]}
+
+      assert Filters.normalize_categories(input) ==
+               %{allow_categories: [], strip_images: true, drop_tags: ["x"]}
+    end
+
+    test "leaves missing keys missing (no defaults inserted)" do
+      assert Filters.normalize_categories(%{}) == %{}
+    end
+
+    test "raises ArgumentError for allow_categories: :none" do
+      assert_raise ArgumentError, ~r/:allow_categories does not accept :none/, fn ->
+        Filters.normalize_categories(%{allow_categories: :none})
+      end
+    end
+
+    test "raises ArgumentError for block_categories: :all" do
+      assert_raise ArgumentError, ~r/:block_categories does not accept :all/, fn ->
+        Filters.normalize_categories(%{block_categories: :all})
+      end
+    end
+
+    test "raises ArgumentError for unrecognized atom in allow_categories" do
+      assert_raise ArgumentError, ~r/:allow_categories must be a list of strings or :all/, fn ->
+        Filters.normalize_categories(%{allow_categories: :foo})
+      end
+    end
+
+    test "raises ArgumentError for unrecognized atom in block_categories" do
+      assert_raise ArgumentError, ~r/:block_categories must be a list of strings or :none/, fn ->
+        Filters.normalize_categories(%{block_categories: :foo})
+      end
+    end
+  end
+
   describe "merge/2" do
     # Populated default filter map used by these tests; co-located here because
     # only the merge/2 tests need it (the rest exercise overrides on top of an
