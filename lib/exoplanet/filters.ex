@@ -44,8 +44,9 @@ defmodule Exoplanet.Filters do
   other atom value, including `allow_categories: :none` and
   `block_categories: :all` (both nonsensical — drop the feed instead).
 
-  Called automatically by `merge/2` and `Exoplanet.Config.from_file/1`,
-  so consumers rarely need to invoke it directly.
+  Intended to be called automatically by `merge/2` and
+  `Exoplanet.Config.from_file/1` once those wire it in (subsequent
+  commits), so consumers will rarely need to invoke it directly.
   """
   @spec normalize_categories(map()) :: map()
   def normalize_categories(filters) when is_map(filters) do
