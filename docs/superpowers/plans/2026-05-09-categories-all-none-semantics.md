@@ -317,14 +317,29 @@ Replace with:
   def merge(defaults, per_feed) do
     defaults
     |> normalize_categories()
-    |> Map.merge(normalize_categories(per_feed), fn
+    |> Map.merge(per_feed, fn
       _k, v1, nil -> v1
       _k, _v1, v2 -> v2
     end)
+    |> normalize_categories()
   end
 ```
 
-Why normalize both sides: a per-feed map that omits `allow_categories` must not let an atom-valued default leak through; a per-feed map that overrides `allow_categories: :all` must be normalized before `Map.merge` so the merged result has `[]`, not `:all`.
+Why this shape:
+
+- **Normalize `defaults` first**, so any atom-valued defaults are turned
+  into `[]` before they can be picked by the collision function.
+- **`Map.merge` with raw `per_feed`** (NOT `normalize_categories(per_feed)`),
+  so the existing nil-sentinel contract — `per_feed` keys set to `nil`
+  leave the default in place — keeps working. Calling
+  `normalize_categories/1` on `per_feed` directly would raise
+  `ArgumentError` on `allow_categories: nil` (the "unrecognized value"
+  branch fires for `nil`), breaking the `"per_feed nil values leave the
+  default in place"` test.
+- **Normalize the merged result**, so any atom values that came from
+  `per_feed` (e.g. `allow_categories: :all`) are turned into `[]` before
+  the map is returned. Invalid atoms (`allow_categories: :none`,
+  `block_categories: :all`) raise here.
 
 - [ ] **Step 2: Update the `@doc` for `merge/2`**
 
