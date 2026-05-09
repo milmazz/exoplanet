@@ -194,6 +194,12 @@ After exoplanet ships, in `planet_beam`:
 No other planet_beam changes are required — `SiteConfig.to_exoplanet_config/1`
 forwards the filter map verbatim and exoplanet does the normalization.
 
+## Implementation constraints
+
+- All work in both `exoplanet` and `planet_beam` MUST happen on a feature
+  branch — direct commits against `main` are blocked by a PreToolUse hook.
+  The branch must be created **before** any file change is made.
+
 ## Risks
 
 - **Reading the source through an old version of exoplanet:** if a
