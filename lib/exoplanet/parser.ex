@@ -202,7 +202,13 @@ defmodule Exoplanet.Parser do
             categories =
               get_in(entry, ["categories", Access.all(), "term"]) |> normalize_categories()
 
-            id = Map.get(entry, "id")
+            # Atom <id> is an IRI per RFC 4287 §4.2.6 — generators like
+            # Bridgetown legitimately emit non-URL URNs (e.g. `repo://...`).
+            # Such an IRI is unusable as a clickable post URL, so prefer the
+            # canonical web link from `<link rel="alternate">` (the spec
+            # default rel) and fall back to <id> only when no usable
+            # alternate link is present.
+            id = atom_post_id(entry)
             summary = blank_to_nil(get_in(entry, ["summary", "value"]))
 
             attrs = %{
@@ -255,6 +261,28 @@ defmodule Exoplanet.Parser do
   # we collapse that sentinel to `nil` so dateless entries can be detected.
   defp denull_atom_updated(~N[1970-01-01 00:00:00]), do: nil
   defp denull_atom_updated(other), do: other
+
+  # Pick the best post id for an Atom entry: prefer the first
+  # `<link rel="alternate">` href (the canonical web URL), then any link
+  # whose `rel` is missing — RFC 4287 §4.2.7.2 says an absent rel defaults
+  # to "alternate" — and finally fall back to <id>.
+  defp atom_post_id(entry) do
+    links = Map.get(entry, "links", []) || []
+
+    alternate =
+      Enum.find_value(links, fn
+        %{"rel" => "alternate", "href" => href} when is_binary(href) ->
+          blank_to_nil(href)
+
+        %{"rel" => rel, "href" => href} when rel in [nil, ""] and is_binary(href) ->
+          blank_to_nil(href)
+
+        _ ->
+          nil
+      end)
+
+    alternate || Map.get(entry, "id")
+  end
 
   # Parse a feed-entry timestamp. Returns:
   #   * `{:ok, nil}` — value missing (caller treats absent date as OK)

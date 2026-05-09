@@ -71,7 +71,7 @@ defmodule ExoplanetTest do
       assert post.title == "Oban: Testing your Workers and Configuration"
 
       assert post.id ==
-               "https://milmazz.uno/article/2022/02/21/oban-testing-your-workers-and-configuration"
+               "https://milmazz.uno/article/2022/02/21/oban-testing-your-workers-and-configuration/"
 
       assert post.body ==
                "In this article, I will continue talking about Oban, but I’ll focus on how to..."
