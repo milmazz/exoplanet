@@ -93,6 +93,19 @@ defmodule ExoplanetTest do
       assert Date.compare(post.published, post.updated) == :eq
     end
 
+    test "atom: falls back to alternate <link href> when <id> is not an http(s) URL" do
+      # Regression: Bridgetown / Jekyll-style feeds can emit a non-resolvable
+      # `repo://...` scheme inside <id>. We must fall back to the alternate
+      # <link href rel="alternate" type="text/html"> so consumers render a
+      # working URL, not a bare guid that surfaces as a broken link.
+      stub_feed(:atom_non_url_id)
+
+      sources = %{"https://katafrakt.example/feed.xml" => %{name: "katafrakt"}}
+      [%Exoplanet.Post{} = post] = Exoplanet.build(build_config(sources: sources))
+
+      assert post.id == "https://katafrakt.example/2026/01/03/elixir-head-with-mise/"
+    end
+
     test "empty <summary> is normalised to nil so consumers fall back to body" do
       stub_feed(:atom_empty_summary)
 

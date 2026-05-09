@@ -202,7 +202,7 @@ defmodule Exoplanet.Parser do
             categories =
               get_in(entry, ["categories", Access.all(), "term"]) |> normalize_categories()
 
-            id = Map.get(entry, "id")
+            id = pick_atom_id(entry)
             summary = blank_to_nil(get_in(entry, ["summary", "value"]))
 
             attrs = %{
@@ -285,6 +285,50 @@ defmodule Exoplanet.Parser do
         :skip
     end
   end
+
+  # Atom <id>: prefer the <id> element when it is an http(s):// URL — this
+  # preserves the existing canonical id used by every well-formed feed.
+  # Some Atom feeds (e.g. Bridgetown) emit a non-resolvable scheme like
+  # `repo://...` inside <id>; fall back to the first alternate
+  # `<link href>` that is itself an http(s):// URL. If neither is usable,
+  # return `nil` so consumers don't render a broken link.
+  defp pick_atom_id(entry) do
+    case Map.get(entry, "id") do
+      id when is_binary(id) ->
+        if http_url?(id), do: id, else: alternate_href(entry["links"])
+
+      _ ->
+        alternate_href(entry["links"])
+    end
+  end
+
+  defp alternate_href(links) when is_list(links) do
+    # Prefer rel="alternate" with type="text/html"; fall back to any
+    # alternate; finally, any http(s):// link in document order. Skip
+    # non-http links so the chosen id is always a public URL.
+    Enum.find_value(
+      [
+        fn l -> l["rel"] == "alternate" and l["mime_type"] == "text/html" end,
+        fn l -> l["rel"] == "alternate" end,
+        fn l -> l["rel"] in [nil, ""] end,
+        fn _ -> true end
+      ],
+      fn pred ->
+        Enum.find_value(links, fn link ->
+          href = link["href"]
+          if pred.(link) and http_url?(href), do: href
+        end)
+      end
+    )
+  end
+
+  defp alternate_href(_), do: nil
+
+  defp http_url?(value) when is_binary(value) do
+    String.starts_with?(value, "http://") or String.starts_with?(value, "https://")
+  end
+
+  defp http_url?(_), do: false
 
   # Trim whitespace and trailing punctuation (`,`, `;`) from each category
   # value before downstream filter matching. Some feeds emit category text

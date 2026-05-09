@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Bridgetown-Style Feed</title>
+  <id>https://katafrakt.example/feed.xml</id>
+  <updated>2026-01-03T03:00:00+01:00</updated>
+
+  <entry>
+    <title>Using Elixir head version with Mise</title>
+    <link href="https://katafrakt.example/2026/01/03/elixir-head-with-mise/" rel="alternate" type="text/html"/>
+    <published>2026-01-03T03:00:00+01:00</published>
+    <updated>2026-01-03T03:00:00+01:00</updated>
+    <id>repo://posts.collection/_posts/2026-01-03-elixir-head-with-mise.md</id>
+    <author><name>katafrakt</name></author>
+    <category term="elixir"/>
+    <content>Body</content>
+  </entry>
+</feed>
