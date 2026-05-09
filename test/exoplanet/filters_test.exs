@@ -114,6 +114,44 @@ defmodule Exoplanet.FiltersTest do
 
       assert result == merge_defaults()
     end
+
+    test "per_feed allow_categories: :all normalizes to []" do
+      result = Filters.merge(merge_defaults(), %{allow_categories: :all})
+      assert result.allow_categories == []
+      assert result.block_categories == ["personal"]
+    end
+
+    test "per_feed block_categories: :none normalizes to []" do
+      result = Filters.merge(merge_defaults(), %{block_categories: :none})
+      assert result.block_categories == []
+      assert result.allow_categories == ["elixir", "erlang"]
+    end
+
+    test "defaults-side allow_categories: :all is also normalized" do
+      defaults = filters(allow_categories: :all, block_categories: ["spam"])
+      result = Filters.merge(defaults, %{})
+      assert result.allow_categories == []
+      assert result.block_categories == ["spam"]
+    end
+
+    test "defaults-side block_categories: :none is also normalized" do
+      defaults = filters(allow_categories: ["elixir"], block_categories: :none)
+      result = Filters.merge(defaults, %{})
+      assert result.allow_categories == ["elixir"]
+      assert result.block_categories == []
+    end
+
+    test "raises ArgumentError for per_feed allow_categories: :none" do
+      assert_raise ArgumentError, ~r/:allow_categories does not accept :none/, fn ->
+        Filters.merge(merge_defaults(), %{allow_categories: :none})
+      end
+    end
+
+    test "raises ArgumentError for per_feed block_categories: :all" do
+      assert_raise ArgumentError, ~r/:block_categories does not accept :all/, fn ->
+        Filters.merge(merge_defaults(), %{block_categories: :all})
+      end
+    end
   end
 
   describe "apply/2 — category filtering" do

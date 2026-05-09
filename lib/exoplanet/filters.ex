@@ -84,15 +84,23 @@ defmodule Exoplanet.Filters do
   `allow_categories` and `block_categories` REPLACE the default value when
   the per-feed map sets them to a list. Other keys override field-by-field.
   Per-feed keys set to `nil` leave the default in place.
+
+  Both maps are passed through `normalize_categories/1` first, so callers
+  may use `allow_categories: :all` or `block_categories: :none` on either
+  side. Invalid atoms (`allow_categories: :none`, `block_categories: :all`,
+  or any unrecognized atom) raise `ArgumentError`.
   """
   @spec merge(t(), map() | nil) :: t()
-  def merge(defaults, nil), do: defaults
+  def merge(defaults, nil), do: normalize_categories(defaults)
 
   def merge(defaults, per_feed) do
-    Map.merge(defaults, per_feed, fn
+    defaults
+    |> normalize_categories()
+    |> Map.merge(per_feed, fn
       _k, v1, nil -> v1
       _k, _v1, v2 -> v2
     end)
+    |> normalize_categories()
   end
 
   @doc """
