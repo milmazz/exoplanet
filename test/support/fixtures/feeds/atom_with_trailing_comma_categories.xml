@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Trailing Comma Categories</title>
+  <id>https://example.com/feed.xml</id>
+  <updated>2026-04-23T00:00:00Z</updated>
+
+  <entry>
+    <title>Erlang/OTP 28.5 Release</title>
+    <link href="https://example.com/news/187" rel="alternate" type="text/html"/>
+    <published>2026-04-23T00:00:00Z</published>
+    <updated>2026-04-23T00:00:00Z</updated>
+    <id>https://example.com/news/187</id>
+    <author><name>Henrik Nord</name></author>
+    <category term="release,"/>
+    <category term="OTP,"/>
+    <category term="28.5"/>
+    <content>OTP 28.5</content>
+  </entry>
+</feed>

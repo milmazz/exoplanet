@@ -131,6 +131,29 @@ defmodule ExoplanetTest do
 
       assert post.categories == nil
     end
+
+    test "trims trailing commas/semicolons and surrounding whitespace from categories" do
+      # Regression: erlang.org/news.xml emits `<category term="otp,"/>` etc;
+      # the trailing comma made allow-list matching fail under plain
+      # case-insensitive equality. Categories must be normalised at
+      # extraction time so both filtering and persisted post records
+      # see the canonical "OTP" form.
+      stub_feed(:atom_with_trailing_comma_categories)
+
+      sources = %{"https://example.com/feed.xml" => %{name: "Example"}}
+
+      filters = %{
+        allow_categories: ["otp"],
+        block_categories: [],
+        strip_images: false,
+        excerpt_length: nil
+      }
+
+      [%Exoplanet.Post{} = post] =
+        Exoplanet.build(build_config(sources: sources, default_filters: filters))
+
+      assert post.categories == ["release", "OTP", "28.5"]
+    end
   end
 
   describe "blank authors" do
