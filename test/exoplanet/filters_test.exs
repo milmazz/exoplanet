@@ -152,6 +152,18 @@ defmodule Exoplanet.FiltersTest do
         Filters.merge(merge_defaults(), %{block_categories: :all})
       end
     end
+
+    test "raises ArgumentError for defaults-side allow_categories: :none" do
+      assert_raise ArgumentError, ~r/:allow_categories does not accept :none/, fn ->
+        Filters.merge(filters(allow_categories: :none), %{})
+      end
+    end
+
+    test "raises ArgumentError for defaults-side block_categories: :all" do
+      assert_raise ArgumentError, ~r/:block_categories does not accept :all/, fn ->
+        Filters.merge(filters(block_categories: :all), %{})
+      end
+    end
   end
 
   describe "apply/2 — category filtering" do

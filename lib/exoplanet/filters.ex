@@ -44,9 +44,9 @@ defmodule Exoplanet.Filters do
   other atom value, including `allow_categories: :none` and
   `block_categories: :all` (both nonsensical — drop the feed instead).
 
-  Intended to be called automatically by `merge/2` and
-  `Exoplanet.Config.from_file/1` once those wire it in (subsequent
-  commits), so consumers will rarely need to invoke it directly.
+  Called automatically by `merge/2`. `Exoplanet.Config.from_file/1`
+  will also wire it in (subsequent commit), so consumers rarely need
+  to invoke it directly.
   """
   @spec normalize_categories(map()) :: map()
   def normalize_categories(filters) when is_map(filters) do
@@ -85,10 +85,10 @@ defmodule Exoplanet.Filters do
   the per-feed map sets them to a list. Other keys override field-by-field.
   Per-feed keys set to `nil` leave the default in place.
 
-  Both maps are passed through `normalize_categories/1` first, so callers
-  may use `allow_categories: :all` or `block_categories: :none` on either
-  side. Invalid atoms (`allow_categories: :none`, `block_categories: :all`,
-  or any unrecognized atom) raise `ArgumentError`.
+  Defaults are normalized first, then the merged result is normalized,
+  so callers may use `allow_categories: :all` or `block_categories: :none`
+  on either side. Invalid atoms (`allow_categories: :none`,
+  `block_categories: :all`, or any unrecognized atom) raise `ArgumentError`.
   """
   @spec merge(t(), map() | nil) :: t()
   def merge(defaults, nil), do: normalize_categories(defaults)
