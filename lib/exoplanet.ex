@@ -31,6 +31,11 @@ defmodule Exoplanet do
         source
         |> Exoplanet.Parser.parse(config)
         |> Exoplanet.Filters.apply(filters)
+        # Sort each per-feed list by publication date (descending) before
+        # capping with `new_feed_items`. Some feeds don't emit entries in
+        # newest-first order; without this sort, document-order older
+        # entries can crowd out the genuinely-recent ones.
+        |> Enum.sort_by(&(&1.published || ~N[0000-01-01 00:00:00]), {:desc, NaiveDateTime})
         |> Enum.take(config.new_feed_items)
       end,
       ordered: false,
