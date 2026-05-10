@@ -111,7 +111,7 @@ defmodule ExoplanetTest do
       sources = %{"https://example.com/feed.rss" => %{name: "Example"}}
       [%Exoplanet.Post{} = post] = Exoplanet.build(build_config(sources: sources))
 
-      assert post.categories == ["Elixir", "BEAM"]
+      assert post.categories == ["elixir", "beam"]
     end
 
     test "extracts categories from atom feeds" do
@@ -120,16 +120,39 @@ defmodule ExoplanetTest do
       sources = %{"https://example.com/atom.xml" => %{name: "Example"}}
       [%Exoplanet.Post{} = post] = Exoplanet.build(build_config(sources: sources))
 
-      assert post.categories == ["Elixir", "BEAM"]
+      assert post.categories == ["elixir", "beam"]
     end
 
-    test "categories is nil when feed has no categories" do
+    test "categories is [] when feed has no categories" do
       stub_feed(:atom)
 
       sources = %{"https://milmazz.uno/atom.xml" => %{name: "Milton Mazzarri"}}
       [%Exoplanet.Post{} = post] = Exoplanet.build(build_config(sources: sources))
 
-      assert post.categories == nil
+      assert post.categories == []
+    end
+
+    test "trims trailing commas/semicolons and surrounding whitespace from categories" do
+      # Regression: erlang.org/news.xml emits `<category term="otp,"/>` etc;
+      # the trailing comma made allow-list matching fail under plain
+      # case-insensitive equality. Categories must be normalised at
+      # extraction time so both filtering and persisted post records
+      # see the canonical "OTP" form.
+      stub_feed(:atom_with_trailing_comma_categories)
+
+      sources = %{"https://example.com/feed.xml" => %{name: "Example"}}
+
+      filters = %{
+        allow_categories: ["otp"],
+        block_categories: [],
+        strip_images: false,
+        excerpt_length: nil
+      }
+
+      [%Exoplanet.Post{} = post] =
+        Exoplanet.build(build_config(sources: sources, default_filters: filters))
+
+      assert post.categories == ["release", "otp", "28.5"]
     end
   end
 

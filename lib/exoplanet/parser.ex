@@ -314,8 +314,38 @@ defmodule Exoplanet.Parser do
     end
   end
 
-  defp normalize_categories([]), do: nil
-  defp normalize_categories(cats), do: cats
+  # Trim whitespace and trailing punctuation (`,`, `;`) from each category
+  # value before downstream filter matching. Some feeds emit category text
+  # like "otp," or "release," (presumably a templating bug on the producer
+  # side) which would otherwise miss case-insensitive equality with "otp"
+  # in the allow/block lists. Empty results after trimming are dropped, and
+  # an entirely empty list is normalised to `nil`.
+  defp normalize_categories(nil), do: nil
+
+  defp normalize_categories(cats) when is_list(cats) do
+    Enum.flat_map(cats, fn cat ->
+      case clean_category(cat) do
+        nil -> []
+        cleaned -> [cleaned]
+      end
+    end)
+  end
+
+  defp clean_category(nil), do: nil
+
+  defp clean_category(value) when is_binary(value) do
+    trimmed =
+      value
+      |> String.downcase()
+      |> String.trim()
+      |> String.trim_trailing(",")
+      |> String.trim_trailing(";")
+      |> String.trim()
+
+    if trimmed == "", do: nil, else: trimmed
+  end
+
+  defp clean_category(_), do: nil
 
   # Drop blank/whitespace-only author names; fall back to the source's
   # configured `name` if nothing meaningful is left.

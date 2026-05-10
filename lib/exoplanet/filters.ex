@@ -70,7 +70,7 @@ defmodule Exoplanet.Filters do
         filters
 
       {:ok, list} when is_list(list) ->
-        filters
+        Map.update!(filters, key, fn l -> Enum.map(l, &String.downcase/1) end)
 
       {:ok, ^ok_atom} ->
         Map.put(filters, key, [])
