@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Only Self Link</title>
+  <id>tag:only-self,2026:/feed</id>
+  <updated>2026-01-03T00:00:00Z</updated>
+  <entry>
+    <id>https://only-self.example/canonical/post-1</id>
+    <title>Entry whose only link is rel=self</title>
+    <link rel="self" href="https://only-self.example/api/post-1.atom" type="application/atom+xml"/>
+    <published>2026-01-03T00:00:00Z</published>
+    <updated>2026-01-03T00:00:00Z</updated>
+    <author><name>x</name></author>
+    <content type="html">body</content>
+  </entry>
+</feed>
