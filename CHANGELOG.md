@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that don't list newest-first (some Bridgetown / Jekyll templates,
   podcast feeds) had genuinely recent posts dropped before the global
   merge.
-- `Exoplanet.Parser` now trims trailing `,` / `;` and surrounding
+- The feed parser now trims trailing `,` / `;` and surrounding
   whitespace from feed categories at extraction time. Some Atom feeds
   emit terms like `otp,` (apparent producer-side templating bug) which
   silently failed `Exoplanet.Filters.passes_allowlist?` against the
