@@ -55,7 +55,7 @@ Show the proposed bump (and the commit list it was derived from) and confirm wit
 Read `CHANGELOG.md` entries for v0.4.1, v0.4.0, and v0.3.0 first to mirror their tone and format:
 
 - Keep a Changelog structure: `## [X.Y.Z] - YYYY-MM-DD`, with `### Added` / `### Changed` / `### Fixed` / `### Removed` subsections (omit empty ones).
-- Multi-line bullets that explain the _why_, not just the _what_. Reference modules/functions in backticks (e.g. `Exoplanet.Filters.merge/2`).
+- Multi-line bullets that explain the _why_, not just the _what_. Reference modules/functions in backticks (e.g. `Exoplanet.Filters.merge/2`). Only backtick **public** modules — `mix docs --warnings-as-errors` fails on backticked references to `@moduledoc false` modules (notably `Exoplanet.Parser`). Use prose like "the feed parser" / "the internal Exoplanet.Parser module" without backticks for hidden modules.
 - Call out breaking changes with a leading `**Breaking:**` on the bullet.
 - Skip pure-internal commits (test refactors, doc tweaks, dep bumps) unless they affect public behaviour.
 - Be brief.
@@ -65,6 +65,7 @@ Then:
 1. Move the contents of the existing `## [unreleased]` section into a new `## [X.Y.Z] - YYYY-MM-DD` section directly below it. Date is today's UTC date.
 2. Leave `## [unreleased]` empty above the new section.
 3. Update `@version "X.Y.Z"` in `mix.exs` (line near the top of the module).
+4. Re-run `mix precommit` so newly-introduced doc warnings (e.g. backticked references to hidden modules in the CHANGELOG entry) fail locally rather than escaping to CI. Phase 2's run happened before these edits — it does not cover them.
 
 **Rollback if anything goes wrong before commit:**
 
