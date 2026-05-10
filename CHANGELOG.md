@@ -7,14 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [0.5.0] - 2026-05-09
+
 ### Added
 
 - `Exoplanet.Filters` now accepts `allow_categories: :all` and
   `block_categories: :none` to express "no constraint" explicitly.
-  Lists keep working unchanged; atoms are normalized to `[]` internally.
-  Invalid atoms (`allow_categories: :none`, `block_categories: :all`, or
-  any unrecognized atom) raise `ArgumentError` at config-load / merge
-  time. The `Exoplanet.Filters.t()` typespec is widened accordingly.
+  Lists keep working unchanged; atoms are normalized to `[]` internally
+  by both `Exoplanet.Filters.merge/2` and
+  `Exoplanet.Config.from_file/1`, so the struct's `default_filters`
+  field is always in canonical list form. Invalid atoms
+  (`allow_categories: :none`, `block_categories: :all`, or any
+  unrecognized atom) raise `ArgumentError` at config-load / merge time.
+  The `Exoplanet.Filters.t()` typespec is widened accordingly.
+
+### Fixed
+
+- `Exoplanet.build/1` now sorts each feed's entries by `published`
+  (descending) before applying the per-feed `new_feed_items` cap.
+  Previously the first N entries in document order were kept, so feeds
+  that don't list newest-first (some Bridgetown / Jekyll templates,
+  podcast feeds) had genuinely recent posts dropped before the global
+  merge.
+- `Exoplanet.Parser` now trims trailing `,` / `;` and surrounding
+  whitespace from feed categories at extraction time. Some Atom feeds
+  emit terms like `otp,` (apparent producer-side templating bug) which
+  silently failed `Exoplanet.Filters.passes_allowlist?` against the
+  canonical `otp` allow-list entry, dropping the post.
+- The Atom parser now derives `Exoplanet.Post.id` from the entry's
+  `<link rel="alternate">` (or any `<link>` without a `rel`, per
+  RFC 4287 §4.2.7.2) before falling back to `<id>`. Bridgetown-style
+  feeds emit `<id>repo://posts.collection/_posts/...md</id>` and the
+  canonical web URL only lives in `<link rel="alternate">`; consumers
+  were rendering the `repo://` URN as a clickable link.
 
 ## [0.4.1] - 2026-05-06
 
@@ -158,7 +183,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release.
 
-[unreleased]: https://github.com/milmazz/exoplanet/compare/v0.4.1...HEAD
+[unreleased]: https://github.com/milmazz/exoplanet/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/milmazz/exoplanet/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/milmazz/exoplanet/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/milmazz/exoplanet/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/milmazz/exoplanet/compare/v0.2.0...v0.3.0
