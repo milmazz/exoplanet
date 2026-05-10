@@ -35,9 +35,11 @@ mix precommit
 ## Phase 3 — Compute version bump
 
 ```bash
-LAST_TAG=$(git describe --tags --abbrev=0)   # e.g. v0.4.1
+LAST_TAG=$(git tag --sort=-v:refname | head -1)   # e.g. v0.4.1
 git log "$LAST_TAG"..HEAD --pretty=format:"%h %s"
 ```
+
+(`git describe --tags --abbrev=0` skips lightweight tags and silently picks an older annotated tag — v0.4.0 / v0.4.1 are lightweight in this repo.)
 
 If `$ARGUMENTS` is `patch` / `minor` / `major`, use it. Otherwise infer from the commit list using conventional commit prefixes:
 
@@ -128,15 +130,20 @@ git tag -a "vX.Y.Z" -m "Release vX.Y.Z"
 git push origin "vX.Y.Z"
 ```
 
-Verify the tag propagated to GitHub:
+Verify the tag propagated to GitHub. Annotated tags have two layers — the tag object and the commit it points at — so verify both:
 
 ```bash
-gh api "repos/milmazz/exoplanet/git/refs/tags/vX.Y.Z" --jq '.object.sha'
+TAG_SHA=$(gh api "repos/milmazz/exoplanet/git/refs/tags/vX.Y.Z" --jq '.object.sha')
+[ "$TAG_SHA" = "$(git rev-parse vX.Y.Z)" ] || { echo "tag-object SHA mismatch"; exit 1; }
+
+# Dereference the tag to its commit and confirm it matches local
+gh api "repos/milmazz/exoplanet/git/tags/$TAG_SHA" --jq '.object.sha'
+# must equal `git rev-parse vX.Y.Z^{}`
 ```
 
-The SHA must equal `git rev-parse vX.Y.Z^{}`. If they differ, stop and investigate before publishing to Hex.
+If either comparison differs, stop and investigate before publishing to Hex. (Comparing `.object.sha` directly to `git rev-parse vX.Y.Z^{}` is wrong — for annotated tags those are always different: one is the tag-object SHA, the other is the commit SHA.)
 
-Publish to Hex (**interactive — the user must confirm the prompt**):
+Publish to Hex. **The user must run this in their own terminal** — `mix hex.publish` blocks on `Proceed? [Yn]` *and* prompts for a 2FA code, neither of which can be supplied through Claude Code's Bash tool. Ask the user to run it via `! mix hex.publish` (or in another shell) and report back when it prints `Package published to https://hex.pm/packages/exoplanet/X.Y.Z`:
 
 ```bash
 mix hex.publish
