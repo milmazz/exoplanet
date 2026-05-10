@@ -267,7 +267,7 @@ defmodule Exoplanet.Parser do
   # whose `rel` is missing — RFC 4287 §4.2.7.2 says an absent rel defaults
   # to "alternate" — and finally fall back to <id>.
   defp atom_post_id(entry) do
-    links = Map.get(entry, "links", []) || []
+    links = Map.get(entry, "links", [])
 
     alternate =
       Enum.find_value(links, fn
