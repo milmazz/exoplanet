@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Added
+
+- `Exoplanet.Filters` now accepts `allow_categories: :all` and
+  `block_categories: :none` to express "no constraint" explicitly.
+  Lists keep working unchanged; atoms are normalized to `[]` internally.
+  Invalid atoms (`allow_categories: :none`, `block_categories: :all`, or
+  any unrecognized atom) raise `ArgumentError` at config-load / merge
+  time. The `Exoplanet.Filters.t()` typespec is widened accordingly.
+
 ## [0.4.1] - 2026-05-06
 
 ### Fixed

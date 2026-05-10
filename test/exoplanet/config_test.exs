@@ -48,6 +48,42 @@ defmodule Exoplanet.ConfigTest do
     end
 
     @tag :tmp_dir
+    test "from_file/1 normalizes :all/:none atoms in default_filters", %{tmp_dir: tmp_dir} do
+      path = Path.join(tmp_dir, "config.exs")
+
+      File.write!(path, """
+      %{
+        sources: %{},
+        default_filters: %{
+          allow_categories: :all,
+          block_categories: :none
+        }
+      }
+      """)
+
+      config = Config.from_file(path)
+
+      assert config.default_filters.allow_categories == []
+      assert config.default_filters.block_categories == []
+    end
+
+    @tag :tmp_dir
+    test "from_file/1 raises for invalid atom in default_filters", %{tmp_dir: tmp_dir} do
+      path = Path.join(tmp_dir, "config.exs")
+
+      File.write!(path, """
+      %{
+        sources: %{},
+        default_filters: %{allow_categories: :none}
+      }
+      """)
+
+      assert_raise ArgumentError, ~r/:allow_categories does not accept :none/, fn ->
+        Config.from_file(path)
+      end
+    end
+
+    @tag :tmp_dir
     test "from_file/1 ignores unknown keys", %{tmp_dir: tmp_dir} do
       path = Path.join(tmp_dir, "config.exs")
 
