@@ -323,13 +323,12 @@ defmodule Exoplanet.Parser do
   defp normalize_categories(nil), do: nil
 
   defp normalize_categories(cats) when is_list(cats) do
-    cats
-    |> Enum.map(&clean_category/1)
-    |> Enum.reject(&is_nil/1)
-    |> case do
-      [] -> nil
-      cleaned -> cleaned
-    end
+    Enum.flat_map(cats, fn cat ->
+      case clean_category(cat) do
+        nil -> []
+        cleaned -> [cleaned]
+      end
+    end)
   end
 
   defp clean_category(nil), do: nil
@@ -337,6 +336,7 @@ defmodule Exoplanet.Parser do
   defp clean_category(value) when is_binary(value) do
     trimmed =
       value
+      |> String.downcase()
       |> String.trim()
       |> String.trim_trailing(",")
       |> String.trim_trailing(";")

@@ -111,7 +111,7 @@ defmodule ExoplanetTest do
       sources = %{"https://example.com/feed.rss" => %{name: "Example"}}
       [%Exoplanet.Post{} = post] = Exoplanet.build(build_config(sources: sources))
 
-      assert post.categories == ["Elixir", "BEAM"]
+      assert post.categories == ["elixir", "beam"]
     end
 
     test "extracts categories from atom feeds" do
@@ -120,16 +120,16 @@ defmodule ExoplanetTest do
       sources = %{"https://example.com/atom.xml" => %{name: "Example"}}
       [%Exoplanet.Post{} = post] = Exoplanet.build(build_config(sources: sources))
 
-      assert post.categories == ["Elixir", "BEAM"]
+      assert post.categories == ["elixir", "beam"]
     end
 
-    test "categories is nil when feed has no categories" do
+    test "categories is [] when feed has no categories" do
       stub_feed(:atom)
 
       sources = %{"https://milmazz.uno/atom.xml" => %{name: "Milton Mazzarri"}}
       [%Exoplanet.Post{} = post] = Exoplanet.build(build_config(sources: sources))
 
-      assert post.categories == nil
+      assert post.categories == []
     end
 
     test "trims trailing commas/semicolons and surrounding whitespace from categories" do
@@ -152,7 +152,7 @@ defmodule ExoplanetTest do
       [%Exoplanet.Post{} = post] =
         Exoplanet.build(build_config(sources: sources, default_filters: filters))
 
-      assert post.categories == ["release", "OTP", "28.5"]
+      assert post.categories == ["release", "otp", "28.5"]
     end
   end
 
