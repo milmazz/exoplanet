@@ -27,8 +27,15 @@ defmodule Exoplanet.DateTimeParser do
 
   # All date-times in RSS conform to the Date and Time Specification of RFC 822,
   # with the exception that the year may be expressed with two characters
-  # or four characters (four preferred).
-  year = choice([integer(4), integer(2)])
+  # or four characters (four preferred). Four-digit years pass through
+  # unchanged; two-digit years follow the RFC 2822 §4.3 obsolete-date rule
+  # (00-49 → 2000s, 50-99 → 1900s), resolved at parse time so the rest of
+  # the pipeline only ever sees a full year.
+  year =
+    choice([
+      integer(4),
+      integer(2) |> map(:normalize_two_digit_year)
+    ])
 
   # date        =  1*2DIGIT month 2DIGIT        ; day month year
   #                                             ;  e.g. 20 Jun 82
@@ -70,24 +77,29 @@ defmodule Exoplanet.DateTimeParser do
 
   alias Exoplanet.ParseError
 
+  @spec parse(binary()) :: {:ok, NaiveDateTime.t()} | {:error, String.t() | atom()}
   def parse(dt) when is_binary(dt) do
-    with {:ok, tokens, _, _, _, _} <- datetime(dt) do
-      [day, month, year, hour, minute, second] = normalize_seconds(tokens)
-      year = normalize_year(year)
-      NaiveDateTime.new(year, month, day, hour, minute, second)
+    case datetime(dt) do
+      {:ok, tokens, _rest, _context, _line, _byte_offset} ->
+        [day, month, year, hour, minute, second] = normalize_seconds(tokens)
+        NaiveDateTime.new(year, month, day, hour, minute, second)
+
+      {:error, reason, _rest, _context, _line, _byte_offset} ->
+        {:error, reason}
     end
   end
 
+  @spec parse!(binary()) :: NaiveDateTime.t()
   def parse!(dt) do
     case parse(dt) do
       {:ok, dt} ->
         dt
 
+      {:error, reason} when is_binary(reason) ->
+        raise ParseError, message: reason
+
       {:error, reason} ->
         raise ParseError, message: "#{inspect(reason)}"
-
-      {:error, reason, _rest, _context, _line, _byte_offset} ->
-        raise ParseError, message: reason
     end
   end
 
@@ -97,6 +109,8 @@ defmodule Exoplanet.DateTimeParser do
   defp normalize_seconds([day, month, year, hour, minute]),
     do: [day, month, year, hour, minute, 0]
 
-  defp normalize_year(offset) when offset < 2000, do: 2000 + offset
-  defp normalize_year(year), do: year
+  # RFC 2822 §4.3: two-digit years 00-49 belong to the 2000s, 50-99 to the
+  # 1900s. Called at parse time via `map/2` in the `year` combinator above.
+  defp normalize_two_digit_year(offset) when offset < 50, do: 2000 + offset
+  defp normalize_two_digit_year(offset), do: 1900 + offset
 end
