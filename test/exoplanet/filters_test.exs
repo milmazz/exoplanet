@@ -430,6 +430,68 @@ defmodule Exoplanet.FiltersTest do
       refute result.summary =~ "script"
       assert result.summary =~ "text"
     end
+
+    test "drops on* event handler attributes" do
+      post =
+        post(body: ~s{<img src="https://e/x.png" onerror="alert(1)"><p onclick="x()">T</p>})
+
+      [result] = Filters.apply([post], filters(sanitize_html: true))
+      refute result.body =~ "onerror"
+      refute result.body =~ "onclick"
+      assert result.body =~ ~s(src="https://e/x.png")
+      assert result.body =~ "T"
+    end
+
+    test "drops href/src with a javascript: scheme" do
+      post = post(body: ~s{<a href="javascript:alert(1)">link</a><img src="javascript:x()">})
+      [result] = Filters.apply([post], filters(sanitize_html: true))
+      refute result.body =~ "javascript"
+      assert result.body =~ "link"
+    end
+
+    test "drops javascript: scheme hidden behind embedded whitespace" do
+      post = post(body: "<a href=\"java\nscript:alert(1)\">link</a>")
+      [result] = Filters.apply([post], filters(sanitize_html: true))
+      refute result.body =~ "script:alert"
+    end
+
+    test "drops data: URIs in src and srcset" do
+      body =
+        ~s(<img src="data:text/html;base64,x">) <>
+          ~s(<img srcset="https://e/a.png 1x, data:text/html;base64,x 2x">)
+
+      post = post(body: body)
+      [result] = Filters.apply([post], filters(sanitize_html: true))
+      refute result.body =~ "data:"
+    end
+
+    test "keeps http/https/mailto and relative URLs" do
+      body =
+        ~s(<a href="https://e/a">a</a><a href="http://e/b">b</a>) <>
+          ~s(<a href="mailto:x@e.com">c</a><a href="/relative">d</a>)
+
+      post = post(body: body)
+      [result] = Filters.apply([post], filters(sanitize_html: true))
+      assert result.body =~ ~s(href="https://e/a")
+      assert result.body =~ ~s(href="http://e/b")
+      assert result.body =~ ~s(href="mailto:x@e.com")
+      assert result.body =~ ~s(href="/relative")
+    end
+
+    test "strip_images + sanitize: unsafe img src is not smuggled into the link" do
+      post = post(body: ~s{<img alt="x" src="javascript:alert(1)">})
+      [result] = Filters.apply([post], filters(sanitize_html: true, strip_images: true))
+      refute result.body =~ "javascript"
+      refute result.body =~ "<a "
+      assert result.body =~ "x"
+    end
+
+    test "sanitize_html: false leaves on* attributes and javascript: URLs alone" do
+      body = ~s{<a href="javascript:alert(1)" onclick="x()">link</a>}
+      post = post(body: body)
+      [result] = Filters.apply([post], filters(sanitize_html: false))
+      assert result.body == body
+    end
   end
 
   # Filter map with empty/false defaults; pass overrides as a keyword list or map.

@@ -1,10 +1,15 @@
 defmodule Exoplanet.Filters do
   @moduledoc """
   Per-feed content filters: HTML sanitization, category allow/block lists,
-  image stripping, and summary truncation. The sanitizer removes dangerous
-  tags and style attributes but the *default configuration* does not filter
-  attribute-based injection vectors such as `on*` event handlers or
-  `javascript:` URIs.
+  image stripping, and summary truncation.
+
+  The sanitizer (`sanitize_html: true`, the default) removes the tags listed
+  in `drop_tags`, the attributes listed in `drop_attrs`, every `on*` event
+  handler attribute, and any `href`/`src`/`srcset` attribute whose URL
+  scheme is not `http`, `https`, or `mailto` (relative URLs are kept).
+  It is a defense-in-depth measure for feed content, not a guarantee — if
+  you render feed HTML in a security-sensitive context, consider pairing it
+  with a dedicated sanitizer such as `html_sanitize_ex`.
 
   ## Category filters
 
@@ -26,6 +31,10 @@ defmodule Exoplanet.Filters do
           drop_tags: [String.t()],
           drop_attrs: [String.t()]
         }
+
+  # URL-bearing attributes subject to the scheme allowlist when sanitizing.
+  @url_attrs ~w(href src srcset)
+  @allowed_schemes ~w(http https mailto)
 
   @defaults %{
     allow_categories: [],
@@ -145,16 +154,26 @@ defmodule Exoplanet.Filters do
 
     cond do
       sanitize? ->
-        drop_tags = MapSet.new(filters.drop_tags)
-        drop_attrs = MapSet.new(filters.drop_attrs)
-        walker = &walk_node(&1, drop_tags, drop_attrs, strip_images?)
-        transform_html_fields(post, walker, fn _ -> true end)
+        opts = %{
+          sanitize?: true,
+          drop_tags: MapSet.new(filters.drop_tags),
+          drop_attrs: MapSet.new(filters.drop_attrs),
+          strip_images?: strip_images?
+        }
+
+        transform_html_fields(post, &walk_node(&1, opts), fn _ -> true end)
 
       strip_images? ->
-        walker = &walk_node(&1, MapSet.new(), MapSet.new(), true)
+        opts = %{
+          sanitize?: false,
+          drop_tags: MapSet.new(),
+          drop_attrs: MapSet.new(),
+          strip_images?: true
+        }
+
         # Short-circuit when html has no <img>: parse/serialize would otherwise
         # rewrite e.g. `&` → `&amp;` and `<br>` → `<br/>`, breaking byte equality.
-        transform_html_fields(post, walker, &has_img?/1)
+        transform_html_fields(post, &walk_node(&1, opts), &has_img?/1)
 
       true ->
         post
@@ -188,26 +207,72 @@ defmodule Exoplanet.Filters do
 
   defp has_img?(html), do: html =~ ~r/<img\b/i
 
-  defp walk_node({tag, attrs, children}, drop_tags, drop_attrs, strip_images?)
-       when is_binary(tag) do
+  defp walk_node({tag, attrs, children}, opts) when is_binary(tag) do
     cond do
-      tag in drop_tags ->
+      tag in opts.drop_tags ->
         []
 
-      strip_images? and tag == "img" ->
-        image_replacement(attr_value(attrs, "alt"), attr_value(attrs, "src"))
+      opts.strip_images? and tag == "img" ->
+        image_replacement(attr_value(attrs, "alt"), image_src(attrs, opts))
 
       true ->
-        clean_attrs = Enum.reject(attrs, fn {name, _} -> name in drop_attrs end)
-
-        clean_children =
-          Enum.flat_map(children, &walk_node(&1, drop_tags, drop_attrs, strip_images?))
-
+        clean_attrs = Enum.reject(attrs, &drop_attr?(&1, opts))
+        clean_children = Enum.flat_map(children, &walk_node(&1, opts))
         [{tag, clean_attrs, clean_children}]
     end
   end
 
-  defp walk_node(node, _drop_tags, _drop_attrs, _strip_images?), do: [node]
+  defp walk_node(node, _opts), do: [node]
+
+  # Attributes named in `drop_attrs` are always removed. When sanitizing,
+  # also remove `on*` event handlers and URL attributes with a disallowed
+  # scheme — those are the standard markup-injection vectors that survive
+  # tag-level filtering.
+  defp drop_attr?({name, value}, opts) do
+    name = String.downcase(name)
+
+    name in opts.drop_attrs or
+      (opts.sanitize? and
+         (String.starts_with?(name, "on") or
+            (name in @url_attrs and not safe_url_value?(name, value))))
+  end
+
+  # The src used for the image-replacement link must pass the same scheme
+  # check as a regular src attribute, otherwise stripping images could
+  # smuggle e.g. a javascript: URL into a clickable <a href>.
+  defp image_src(attrs, opts) do
+    case attr_value(attrs, "src") do
+      nil -> nil
+      src -> if opts.sanitize? and not safe_url?(src), do: nil, else: src
+    end
+  end
+
+  # srcset is a comma-separated list of "url [descriptor]" candidates; every
+  # candidate URL must be safe for the attribute to survive.
+  defp safe_url_value?("srcset", value) do
+    value
+    |> String.split(",")
+    |> Enum.all?(fn candidate ->
+      candidate |> String.trim() |> String.split(~r/\s+/) |> hd() |> safe_url?()
+    end)
+  end
+
+  defp safe_url_value?(_name, value), do: safe_url?(value)
+
+  # A URL is safe when it is relative (no scheme) or its scheme is in the
+  # allowlist. ASCII control characters and whitespace are stripped before
+  # the scheme check because HTML parsers tolerate them inside the scheme
+  # (e.g. "java\nscript:"), which would otherwise defeat a naive match.
+  defp safe_url?(url) when is_binary(url) do
+    compact = String.replace(url, ~r/[\x00-\x20]/, "")
+
+    case Regex.run(~r/^([a-zA-Z][a-zA-Z0-9+.-]*):/, compact) do
+      [_, scheme] -> String.downcase(scheme) in @allowed_schemes
+      nil -> true
+    end
+  end
+
+  defp safe_url?(_), do: false
 
   # alt="" is HTML5 for "decorative image" — drop it the same as missing alt.
   defp image_replacement(nil, _src), do: []
