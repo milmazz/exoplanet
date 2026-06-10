@@ -251,6 +251,20 @@ defmodule ExoplanetTest do
       posts = Exoplanet.build(build_config(sources: sources))
       assert posts == Enum.sort_by(posts, & &1.published, {:desc, Date})
     end
+
+    test "caps the merged list at config.items, keeping the newest posts" do
+      stub_feed(:atom_six_entries_for_filters)
+
+      sources = %{"https://filters-test.example/feed.xml" => %{name: "F"}}
+
+      posts =
+        Exoplanet.build(
+          build_config(sources: sources, new_feed_items: 6, items: 2, feed_timeout: 5)
+        )
+
+      assert length(posts) == 2
+      assert Enum.map(posts, & &1.title) == ["Six", "Five"]
+    end
   end
 
   describe "errors" do
@@ -285,6 +299,35 @@ defmodule ExoplanetTest do
 
       assert result == []
       assert log =~ "parse failed"
+    end
+
+    test "a feed exceeding feed_timeout is dropped; sibling feeds still produce posts" do
+      # Regression: `Task.async_stream` without `on_timeout: :kill_task`
+      # exits the calling process when one feed is slow, so a single
+      # unresponsive source used to crash the whole build.
+      stub = fn conn ->
+        if conn.host == "slow.example" do
+          Process.sleep(:timer.seconds(5))
+        end
+
+        Req.Test.html(conn, Exoplanet.TestHelpers.fixture(:atom))
+      end
+
+      Req.Test.stub(Exoplanet.Parser, stub)
+
+      sources = %{
+        "https://slow.example/feed.xml" => %{name: "Slow"},
+        "https://milmazz.uno/atom.xml" => %{name: "Milton Mazzarri"}
+      }
+
+      {posts, log} =
+        with_log(fn ->
+          Exoplanet.build(build_config(sources: sources, feed_timeout: 1))
+        end)
+
+      assert [%Exoplanet.Post{feed_url: "https://milmazz.uno/atom.xml"}] = posts
+      assert log =~ "Feed https://slow.example/feed.xml: dropped"
+      assert log =~ "feed_timeout"
     end
 
     test "logs when a source can't be retrieved" do
@@ -366,6 +409,39 @@ defmodule ExoplanetTest do
 
       titles = Enum.map(posts, & &1.title)
       assert "Four" in titles
+    end
+
+    test "per-source filters: override default_filters for that source only" do
+      stub_feeds(%{
+        "filters-test.example" => :atom_six_entries_for_filters,
+        "other.example" => :atom_six_entries_for_filters
+      })
+
+      sources = %{
+        # Overrides the default allowlist: only the "personal" entry survives.
+        "https://filters-test.example/feed.xml" => %{
+          name: "F",
+          filters: %{allow_categories: ["personal"]}
+        },
+        # No per-source filters: inherits the default "elixir" allowlist.
+        "https://other.example/feed.xml" => %{name: "O"}
+      }
+
+      posts =
+        Exoplanet.build(
+          build_config(
+            sources: sources,
+            new_feed_items: 6,
+            default_filters: %{allow_categories: ["elixir"]}
+          )
+        )
+
+      by_feed = Enum.group_by(posts, & &1.feed_url, & &1.title)
+
+      assert by_feed["https://filters-test.example/feed.xml"] == ["Four"]
+
+      assert Enum.sort(by_feed["https://other.example/feed.xml"]) ==
+               ["Five", "One", "Six", "Three", "Two"]
     end
 
     test "applies library default sanitize_html when user omits it" do
