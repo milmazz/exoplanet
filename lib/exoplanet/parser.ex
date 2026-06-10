@@ -22,8 +22,12 @@ defmodule Exoplanet.Parser do
   defp fetch_body(url, config) do
     {conditional_headers, cached_entry} = build_conditional_headers(url)
 
+    # Retries are off by default: with the feed_timeout task backstop in
+    # `Exoplanet.build/1` a retried request could never finish anyway, and a
+    # prompt error return is what lets us fall back to the cached body.
+    # Consumers can re-enable retries via the :req_options app env key.
     opts =
-      [receive_timeout: to_timeout(second: config.feed_timeout)]
+      [receive_timeout: to_timeout(second: config.feed_timeout), retry: false]
       |> Keyword.merge(req_options())
       |> merge_headers(conditional_headers)
 
@@ -62,8 +66,33 @@ defmodule Exoplanet.Parser do
   # test plugs, ...). `:planet_req_options` is the deprecated pre-0.6 name,
   # kept as a fallback for existing consumers.
   defp req_options do
-    Application.get_env(:exoplanet, :req_options) ||
-      Application.get_env(:exoplanet, :planet_req_options, [])
+    case Application.get_env(:exoplanet, :req_options) do
+      nil ->
+        case Application.get_env(:exoplanet, :planet_req_options) do
+          nil ->
+            []
+
+          legacy ->
+            warn_legacy_req_options()
+            legacy
+        end
+
+      opts ->
+        opts
+    end
+  end
+
+  # Warn once per VM, not once per feed fetch — a planet rebuild touches
+  # every source and would otherwise repeat this for each of them.
+  defp warn_legacy_req_options do
+    unless :persistent_term.get({__MODULE__, :legacy_req_options_warned}, false) do
+      :persistent_term.put({__MODULE__, :legacy_req_options_warned}, true)
+
+      Logger.warning(
+        "the :planet_req_options application env key is deprecated; " <>
+          "rename it to :req_options (config :exoplanet, req_options: [...])"
+      )
+    end
   end
 
   defp cache_adapter, do: Application.get_env(:exoplanet, :cache_adapter)

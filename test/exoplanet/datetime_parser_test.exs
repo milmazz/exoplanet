@@ -35,4 +35,18 @@ defmodule Exoplanet.DateTimeParserTest do
       end
     end
   end
+
+  describe "parse/1" do
+    test "returns {:ok, t} on success and a two-element {:error, reason} on failure" do
+      assert {:ok, ~N[2024-11-18 11:00:00]} =
+               DateTimeParser.parse("Mon, 18 Nov 2024 11:00:00 EST")
+
+      # Parsec failure: reason is the parser's message string.
+      assert {:error, reason} = DateTimeParser.parse("foo")
+      assert is_binary(reason)
+
+      # Calendar failure: reason comes from NaiveDateTime.new/6.
+      assert {:error, :invalid_date} = DateTimeParser.parse("32 Nov 2024 11:00 EST")
+    end
+  end
 end

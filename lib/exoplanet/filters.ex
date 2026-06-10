@@ -5,7 +5,8 @@ defmodule Exoplanet.Filters do
 
   The sanitizer (`sanitize_html: true`, the default) removes the tags listed
   in `drop_tags`, the attributes listed in `drop_attrs`, every `on*` event
-  handler attribute, and any `href`/`src`/`srcset` attribute whose URL
+  handler attribute, and any URL-bearing attribute (`href`, `src`, `srcset`,
+  `action`, `formaction`, `poster`, `xlink:href`) whose URL
   scheme is not `http`, `https`, or `mailto` (relative URLs are kept).
   It is a defense-in-depth measure for feed content, not a guarantee — if
   you render feed HTML in a security-sensitive context, consider pairing it
@@ -33,7 +34,7 @@ defmodule Exoplanet.Filters do
         }
 
   # URL-bearing attributes subject to the scheme allowlist when sanitizing.
-  @url_attrs ~w(href src srcset)
+  @url_attrs ~w(href src srcset action formaction poster xlink:href)
   @allowed_schemes ~w(http https mailto)
 
   @defaults %{
@@ -157,7 +158,9 @@ defmodule Exoplanet.Filters do
         opts = %{
           sanitize?: true,
           drop_tags: MapSet.new(filters.drop_tags),
-          drop_attrs: MapSet.new(filters.drop_attrs),
+          # Downcased so user-supplied names like "Style" match the
+          # (already-lowercased) attribute names compared in drop_attr?/2.
+          drop_attrs: MapSet.new(filters.drop_attrs, &String.downcase/1),
           strip_images?: strip_images?
         }
 

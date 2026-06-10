@@ -66,7 +66,8 @@ semantics.
 
 With `sanitize_html: true` (the default), Exoplanet removes the tags in
 `drop_tags`, the attributes in `drop_attrs`, all `on*` event-handler
-attributes, and any `href`/`src`/`srcset` whose URL scheme is not `http`,
+attributes, and any URL-bearing attribute (`href`, `src`, `srcset`, `action`,
+`formaction`, `poster`, `xlink:href`) whose URL scheme is not `http`,
 `https`, or `mailto`. This is defense-in-depth for feed content, not a
 guarantee — if you render feed HTML in a security-sensitive context,
 consider pairing it with a dedicated sanitizer such as

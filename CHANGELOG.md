@@ -23,16 +23,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 
 - The default HTML sanitizer (`sanitize_html: true`) now also removes `on*`
-  event-handler attributes and `href`/`src`/`srcset` attributes whose URL
+  event-handler attributes and URL-bearing attributes (`href`, `src`,
+  `srcset`, `action`, `formaction`, `poster`, `xlink:href`) whose URL
   scheme is not `http`, `https`, or `mailto` (relative URLs are kept).
   Previously `javascript:` links and inline event handlers passed through.
 
 ### Changed
 
 - `feed_timeout` is now enforced at the HTTP layer as Req's
-  `:receive_timeout` (it previously only bounded the surrounding task).
+  `:receive_timeout` (it previously only bounded the surrounding task), and
+  Req's automatic retries are now disabled by default — a retried request
+  could never finish inside the task backstop anyway, and a prompt error
+  return is what enables the cached-body fallback. Re-enable retries via
+  `:req_options` if you need them.
 - The application env key for extra Req options is now `:req_options`.
-  The old `:planet_req_options` key keeps working as a deprecated fallback.
+  The old `:planet_req_options` key keeps working as a deprecated fallback
+  and logs a one-time deprecation warning.
 - `Exoplanet.Config.from_file/1` and `Exoplanet.build/1` now share one
   canonical defaults-merge path (`Exoplanet.Filters.merge/2`); `nil` values
   in `default_filters` keep the library default in both entry points.

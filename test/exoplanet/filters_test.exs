@@ -478,6 +478,23 @@ defmodule Exoplanet.FiltersTest do
       assert result.body =~ ~s(href="/relative")
     end
 
+    test "drops unsafe schemes in form action and formaction attributes" do
+      body =
+        ~s{<form action="javascript:alert(1)"><button formaction="javascript:x()">go</button></form>}
+
+      post = post(body: body)
+      [result] = Filters.apply([post], filters(sanitize_html: true))
+      refute result.body =~ "javascript"
+      assert result.body =~ "go"
+    end
+
+    test "drop_attrs matching is case-insensitive for user-supplied names" do
+      post = post(body: ~s(<p style="color:red" class="x">T</p>))
+      [result] = Filters.apply([post], filters(sanitize_html: true, drop_attrs: ["Style"]))
+      refute result.body =~ "style"
+      assert result.body =~ ~s(class="x")
+    end
+
     test "strip_images + sanitize: unsafe img src is not smuggled into the link" do
       post = post(body: ~s{<img alt="x" src="javascript:alert(1)">})
       [result] = Filters.apply([post], filters(sanitize_html: true, strip_images: true))
