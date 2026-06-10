@@ -18,7 +18,7 @@ Add `:exoplanet` to your dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:exoplanet, "~> 0.4"}
+    {:exoplanet, "~> 0.5"}
   ]
 end
 ```
@@ -62,6 +62,34 @@ posts  = Exoplanet.build(config)
 exercises every supported field, and `Exoplanet.Filters` for the filter
 semantics.
 
+### A note on HTML sanitization
+
+With `sanitize_html: true` (the default), Exoplanet removes the tags in
+`drop_tags`, the attributes in `drop_attrs`, all `on*` event-handler
+attributes, and any `href`/`src`/`srcset` whose URL scheme is not `http`,
+`https`, or `mailto`. This is defense-in-depth for feed content, not a
+guarantee — if you render feed HTML in a security-sensitive context,
+consider pairing it with a dedicated sanitizer such as
+[html_sanitize_ex](https://hex.pm/packages/html_sanitize_ex).
+
+Note that `Exoplanet.Config.from_file/1` evaluates the config file with
+`Code.eval_file/1` — treat that file as trusted code, like any other `.exs`
+in your project.
+
+## HTTP client options
+
+Each feed request is bounded by the config's `feed_timeout` (seconds), which
+is passed to [Req](https://hexdocs.pm/req) as `:receive_timeout`. You can
+forward additional options to `Req.get/2` (user-agent, proxy, retry policy,
+…) via the application environment:
+
+```elixir
+Application.put_env(:exoplanet, :req_options, headers: [user_agent: "my-planet/1.0"])
+```
+
+The old key name `:planet_req_options` still works but is deprecated; use
+`:req_options`.
+
 ## HTTP caching (optional)
 
 Exoplanet can issue conditional `If-None-Match` / `If-Modified-Since`
@@ -90,6 +118,14 @@ longer part of the struct.
 same map and read them yourself.
 
 See the [CHANGELOG](CHANGELOG.md) for the full list of changes.
+
+## Contributing
+
+Contributions are welcome! See
+[CONTRIBUTING.md](https://github.com/milmazz/exoplanet/blob/main/CONTRIBUTING.md)
+for development setup, the test conventions, and how the generated
+`DateTimeParser` is regenerated. Run `mix precommit` before opening a pull
+request — it mirrors the CI checks.
 
 ## License
 

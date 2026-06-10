@@ -52,7 +52,14 @@ defmodule Exoplanet.MixProject do
   defp docs do
     [
       main: "readme",
-      extras: ["README.md", "CHANGELOG.md"]
+      source_ref: "v#{@version}",
+      extras: ["README.md", "CHANGELOG.md", "CONTRIBUTING.md"],
+      # Private modules referenced from the changelog and contributing guide.
+      skip_code_autolink_to: [
+        "Exoplanet.Parser",
+        "Exoplanet.DateTimeParser",
+        "Exoplanet.DateTimeParser.parse/1"
+      ]
     ]
   end
 
@@ -72,7 +79,7 @@ defmodule Exoplanet.MixProject do
     [
       licenses: ["Apache-2.0"],
       maintainers: ["Milton Mazzarri"],
-      files: ~w(lib example mix.exs README.md CHANGELOG.md LICENSE),
+      files: ~w(lib example mix.exs README.md CHANGELOG.md CONTRIBUTING.md LICENSE),
       links: %{"GitHub" => "https://github.com/milmazz/exoplanet"}
     ]
   end

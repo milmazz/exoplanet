@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Fixed
+
+- A single slow feed no longer crashes the entire build. `Exoplanet.build/1`
+  now kills tasks that exceed `feed_timeout` (plus a 1s grace period) and
+  drops only that feed, logging a warning that names the feed URL.
+- `Exoplanet.DateTimeParser` no longer corrupts pre-2000 RFC 822 dates.
+  Four-digit years pass through unchanged (1999 used to become 3999), and
+  two-digit years follow the RFC 2822 century rule: 00-49 → 2000s, 50-99 →
+  1900s ("99" used to become 2099).
+- `Exoplanet.Parser` now ensures the cache adapter module is loaded before
+  probing for the optional `on_success`/`on_error` callbacks, so they are no
+  longer silently skipped in interactive/dev environments.
+
+### Security
+
+- The default HTML sanitizer (`sanitize_html: true`) now also removes `on*`
+  event-handler attributes and `href`/`src`/`srcset` attributes whose URL
+  scheme is not `http`, `https`, or `mailto` (relative URLs are kept).
+  Previously `javascript:` links and inline event handlers passed through.
+
+### Changed
+
+- `feed_timeout` is now enforced at the HTTP layer as Req's
+  `:receive_timeout` (it previously only bounded the surrounding task).
+- The application env key for extra Req options is now `:req_options`.
+  The old `:planet_req_options` key keeps working as a deprecated fallback.
+- `Exoplanet.Config.from_file/1` and `Exoplanet.build/1` now share one
+  canonical defaults-merge path (`Exoplanet.Filters.merge/2`); `nil` values
+  in `default_filters` keep the library default in both entry points.
+- `Exoplanet.DateTimeParser.parse/1` now always returns
+  `{:ok, NaiveDateTime.t()}` or a two-element `{:error, reason}` tuple
+  (it previously leaked NimbleParsec's six-element error tuple).
+
+### Added
+
+- `CONTRIBUTING.md` with development setup, test conventions, and the
+  `DateTimeParser` regeneration workflow.
+
 ## [0.5.0] - 2026-05-09
 
 ### Added
