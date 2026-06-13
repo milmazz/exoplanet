@@ -12,6 +12,8 @@ defmodule Exoplanet do
   It provides a simple and efficient way to combine multiple feeds into one.
   """
 
+  require Logger
+
   @doc """
   Returns a list of ordered post based on their publication date
   """
@@ -23,29 +25,58 @@ defmodule Exoplanet do
     # merge is a no-op for that path.
     defaults = Exoplanet.Filters.merge(Exoplanet.Filters.defaults(), defaults)
 
-    sources
-    |> Task.async_stream(
-      fn {_url, attrs} = source ->
-        filters = Exoplanet.Filters.merge(defaults, attrs[:filters])
+    # `ordered: true` (the default) keeps results aligned with `source_list`
+    # so the zip below can name the feed in timeout warnings. It costs
+    # nothing here: feeds still run concurrently and the merged list is
+    # re-sorted anyway.
+    source_list = Enum.to_list(sources)
 
-        source
-        |> Exoplanet.Parser.parse(config)
-        |> Exoplanet.Filters.apply(filters)
-        # Sort each per-feed list by publication date (descending) before
-        # capping with `new_feed_items`. Some feeds don't emit entries in
-        # newest-first order; without this sort, document-order older
-        # entries can crowd out the genuinely-recent ones.
-        |> Enum.sort_by(&(&1.published || ~N[0000-01-01 00:00:00]), {:desc, NaiveDateTime})
-        |> Enum.take(config.new_feed_items)
-      end,
-      ordered: false,
-      timeout: to_timeout(second: config.feed_timeout)
+    # `feed_timeout` bounds the HTTP request itself (`receive_timeout` in
+    # `Exoplanet.Parser`); the task timeout adds a 1s grace period so the
+    # HTTP timeout fires first and the parser can still fall back to a
+    # cached body. The task kill is a backstop for anything else that hangs.
+    source_list
+    |> Task.async_stream(&build_source(&1, defaults, config),
+      timeout: to_timeout(second: config.feed_timeout) + 1_000,
+      on_timeout: :kill_task
     )
+    |> Stream.zip(source_list)
     |> Stream.flat_map(fn
-      {:ok, posts} -> posts
-      _ -> []
+      {{:ok, posts}, _source} ->
+        posts
+
+      {{:exit, :timeout}, {url, _attrs}} ->
+        Logger.warning(
+          "Feed #{url}: dropped — did not finish within feed_timeout (#{config.feed_timeout}s)"
+        )
+
+        []
+
+      {{:exit, reason}, {url, _attrs}} ->
+        Logger.warning("Feed #{url}: dropped — task exited: #{inspect(reason)}")
+        []
     end)
-    |> Enum.sort_by(&(&1.published || ~N[0000-01-01 00:00:00]), {:desc, NaiveDateTime})
+    |> sort_by_published_desc()
     |> Enum.take(config.items)
+  end
+
+  # Fetch, parse, filter, and cap a single source.
+  defp build_source({_url, attrs} = source, defaults, config) do
+    filters = Exoplanet.Filters.merge(defaults, attrs[:filters])
+
+    source
+    |> Exoplanet.Parser.parse(config)
+    |> Exoplanet.Filters.apply(filters)
+    # Sort each per-feed list by publication date (descending) before
+    # capping with `new_feed_items`. Some feeds don't emit entries in
+    # newest-first order; without this sort, document-order older
+    # entries can crowd out the genuinely-recent ones.
+    |> sort_by_published_desc()
+    |> Enum.take(config.new_feed_items)
+  end
+
+  # Newest first; posts without a date sort to the end via the year-0 sentinel.
+  defp sort_by_published_desc(posts) do
+    Enum.sort_by(posts, &(&1.published || ~N[0000-01-01 00:00:00]), {:desc, NaiveDateTime})
   end
 end

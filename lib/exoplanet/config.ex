@@ -47,10 +47,9 @@ defmodule Exoplanet.Config do
     {attrs, _} = Code.eval_file(path)
     config = struct!(__MODULE__, Map.take(attrs, recognized_keys()))
 
-    merged_filters =
-      Exoplanet.Filters.defaults()
-      |> Map.merge(config.default_filters)
-      |> Exoplanet.Filters.normalize_categories()
+    # Same merge `Exoplanet.build/1` applies, so both entry points share one
+    # canonical defaults path (nil values keep the library default).
+    merged_filters = Exoplanet.Filters.merge(Exoplanet.Filters.defaults(), config.default_filters)
 
     %{config | default_filters: merged_filters}
   end

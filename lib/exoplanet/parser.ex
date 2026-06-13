@@ -19,11 +19,17 @@ defmodule Exoplanet.Parser do
 
   # Fetches the feed body, using the configured cache adapter for conditional
   # GET when available. Returns the body string, or nil on an uncached error.
-  defp fetch_body(url, _config) do
+  defp fetch_body(url, config) do
     {conditional_headers, cached_entry} = build_conditional_headers(url)
 
-    base_opts = Application.get_env(:exoplanet, :planet_req_options, [])
-    opts = merge_headers(base_opts, conditional_headers)
+    # Retries are off by default: with the feed_timeout task backstop in
+    # `Exoplanet.build/1` a retried request could never finish anyway, and a
+    # prompt error return is what lets us fall back to the cached body.
+    # Consumers can re-enable retries via the :req_options app env key.
+    opts =
+      [receive_timeout: to_timeout(second: config.feed_timeout), retry: false]
+      |> Keyword.merge(req_options())
+      |> merge_headers(conditional_headers)
 
     case Req.get(url, opts) do
       {:ok, %{status: 304}} ->
@@ -56,6 +62,39 @@ defmodule Exoplanet.Parser do
     end
   end
 
+  # Extra options forwarded to `Req.get/2` (user-agent, proxy, retry policy,
+  # test plugs, ...). `:planet_req_options` is the deprecated pre-0.6 name,
+  # kept as a fallback for existing consumers.
+  defp req_options do
+    case Application.get_env(:exoplanet, :req_options) do
+      nil ->
+        case Application.get_env(:exoplanet, :planet_req_options) do
+          nil ->
+            []
+
+          legacy ->
+            warn_legacy_req_options()
+            legacy
+        end
+
+      opts ->
+        opts
+    end
+  end
+
+  # Warn once per VM, not once per feed fetch — a planet rebuild touches
+  # every source and would otherwise repeat this for each of them.
+  defp warn_legacy_req_options do
+    unless :persistent_term.get({__MODULE__, :legacy_req_options_warned}, false) do
+      :persistent_term.put({__MODULE__, :legacy_req_options_warned}, true)
+
+      Logger.warning(
+        "the :planet_req_options application env key is deprecated; " <>
+          "rename it to :req_options (config :exoplanet, req_options: [...])"
+      )
+    end
+  end
+
   defp cache_adapter, do: Application.get_env(:exoplanet, :cache_adapter)
 
   defp maybe_notify_success(url, status), do: maybe_call_adapter(:on_success, [url, status])
@@ -69,7 +108,10 @@ defmodule Exoplanet.Parser do
         :ok
 
       adapter ->
-        if function_exported?(adapter, callback, length(args)) do
+        # `function_exported?/3` returns false for modules that haven't been
+        # loaded yet (e.g. in dev/interactive mode), so ensure the adapter is
+        # loaded before probing for the optional callback.
+        if Code.ensure_loaded?(adapter) and function_exported?(adapter, callback, length(args)) do
           apply(adapter, callback, args)
         end
 
@@ -163,7 +205,7 @@ defmodule Exoplanet.Parser do
               authors = normalize_authors(rss_authors(item), name)
 
               categories =
-                (item["categories"] || []) |> Enum.map(& &1["name"]) |> normalize_categories()
+                (item["categories"] || []) |> Enum.map(& &1["name"]) |> clean_categories()
 
               id = item["link"] || get_in(item, ["guid", "value"])
 
@@ -200,7 +242,7 @@ defmodule Exoplanet.Parser do
             authors = normalize_authors(get_in(entry, ["authors", Access.all(), "name"]), name)
 
             categories =
-              get_in(entry, ["categories", Access.all(), "term"]) |> normalize_categories()
+              get_in(entry, ["categories", Access.all(), "term"]) |> clean_categories()
 
             # Atom <id> is an IRI per RFC 4287 §4.2.6 — generators like
             # Bridgetown legitimately emit non-URL URNs (e.g. `repo://...`).
@@ -320,9 +362,13 @@ defmodule Exoplanet.Parser do
   # side) which would otherwise miss case-insensitive equality with "otp"
   # in the allow/block lists. Empty results after trimming are dropped, and
   # an entirely empty list is normalised to `nil`.
-  defp normalize_categories(nil), do: nil
+  #
+  # Named `clean_categories` (not `normalize_categories`) to avoid colliding
+  # with `Exoplanet.Filters.normalize_categories/1`, which has unrelated
+  # semantics (filter-atom normalization).
+  defp clean_categories(nil), do: nil
 
-  defp normalize_categories(cats) when is_list(cats) do
+  defp clean_categories(cats) when is_list(cats) do
     Enum.flat_map(cats, fn cat ->
       case clean_category(cat) do
         nil -> []
