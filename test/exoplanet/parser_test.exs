@@ -55,13 +55,8 @@ defmodule Exoplanet.ParserTest do
       # rss_bad_date.xml has two items: one with an unparseable <pubDate>
       # ("totally not a date") and one valid item ("Good post"). The bad item is
       # dropped, the valid sibling is kept, and a warning is logged.
-      log =
-        capture_log(fn ->
-          posts = Parser.parse(fixture(:rss_bad_date), @url, @name)
-          send(self(), {:posts, posts})
-        end)
-
-      assert_received {:posts, posts}
+      {posts, log} =
+        with_log(fn -> Parser.parse(fixture(:rss_bad_date), @url, @name) end)
 
       assert [%Post{} = good] = posts
       assert good.title == "Good post"
@@ -79,7 +74,7 @@ defmodule Exoplanet.ParserTest do
       assert Enum.all?(posts, &(&1.feed_url == @url))
     end
 
-    test "every returned post has a NaiveDateTime published date" do
+    test "falls back to <updated> when <published> is missing" do
       # atom_published_missing.xml's entry omits <published> but supplies
       # <updated>; the parser falls back to <updated>, so the post is kept with a
       # real NaiveDateTime published value (entries with neither would be dropped).
@@ -90,7 +85,7 @@ defmodule Exoplanet.ParserTest do
 
     test "cleans trailing-comma categories" do
       [post | _] = Parser.parse(fixture(:atom_with_trailing_comma_categories), @url, @name)
-      refute Enum.any?(post.categories || [], &String.ends_with?(&1, ","))
+      assert post.categories == ["release", "otp", "28.5"]
     end
   end
 end
