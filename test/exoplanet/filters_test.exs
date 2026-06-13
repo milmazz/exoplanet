@@ -236,6 +236,18 @@ defmodule Exoplanet.FiltersTest do
       refute result.body =~ "<a href"
     end
 
+    test "does not promote a javascript: src into a clickable link" do
+      post = post(body: ~s{<p><img alt="x" src="javascript:alert(1)"></p>})
+
+      [result] = Filters.apply([post], filters(strip_images: true))
+      # The generated <a href> is exoplanet's own construct, so the scheme
+      # allowlist must apply even though this path runs with sanitize_html
+      # off — a disallowed scheme drops the href, leaving just the alt text.
+      refute result.body =~ "javascript"
+      refute result.body =~ "<a "
+      assert result.body =~ "x"
+    end
+
     test "image with no src renders alt as plain text" do
       post = post(body: ~s(<p>before <img alt="logo"> after</p>))
 

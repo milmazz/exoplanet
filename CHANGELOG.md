@@ -48,6 +48,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `Exoplanet.Sanitizer` behaviour: optionally delegate HTML sanitization to a
+  comprehensive library (e.g. `html_sanitize_ex`) via
+  `config :exoplanet, sanitizer_adapter: MyAdapter`. When set, the adapter
+  replaces the built-in sanitizer.
 - `CONTRIBUTING.md` with development setup, test conventions, and the
   `DateTimeParser` regeneration workflow.
 

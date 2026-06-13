@@ -12,6 +12,15 @@ defmodule Exoplanet.Filters do
   you render feed HTML in a security-sensitive context, consider pairing it
   with a dedicated sanitizer such as `html_sanitize_ex`.
 
+  To delegate sanitization entirely, configure an `Exoplanet.Sanitizer`
+  adapter:
+
+      config :exoplanet, sanitizer_adapter: MyApp.FeedSanitizer
+
+  When set (and `sanitize_html` is `true`), the adapter replaces the built-in
+  sanitize step. `strip_images` and `excerpt_length` still apply, after the
+  adapter. See `Exoplanet.Sanitizer`.
+
   ## Category filters
 
   `allow_categories` accepts a list of strings or `:all` (no allowlist
@@ -129,7 +138,9 @@ defmodule Exoplanet.Filters do
   entirely. The `sanitize_html` and `strip_images` filters modify each post's
   `:body` and `:summary`. The `excerpt_length` filter modifies only `:summary`.
   Sanitization runs first, then image stripping, then excerpt generation.
-  When both HTML filters are enabled they share a single tree walk.
+  When both built-in HTML filters are enabled they share a single tree walk;
+  with a `sanitizer_adapter` configured, sanitization and image stripping run
+  as separate passes.
   """
   @spec apply([Exoplanet.Post.t()], t()) :: [Exoplanet.Post.t()]
   def apply(posts, filters) do
@@ -147,13 +158,29 @@ defmodule Exoplanet.Filters do
     |> apply_excerpt(filters)
   end
 
-  # Single tree walk that fuses sanitization and image stripping. Returns the
-  # post unchanged when neither filter is enabled (no parse/serialize cost).
+  # Optional sanitizer adapter (an `Exoplanet.Sanitizer` implementation). Read
+  # per call, mirroring how `Exoplanet.Fetcher` reads `:cache_adapter`.
+  defp sanitizer_adapter, do: Application.get_env(:exoplanet, :sanitizer_adapter)
+
+  # Applies sanitization and image stripping. Returns the post unchanged when
+  # neither filter is enabled (no parse/serialize cost). The built-in case is a
+  # single fused tree walk; the adapter case delegates the sanitize step and
+  # runs image stripping as a separate pass.
+  #
+  # When a `:sanitizer_adapter` is configured and `sanitize_html` is true, the
+  # adapter replaces the built-in sanitize walk; `strip_images` then runs after,
+  # via the existing strip-only walk.
   defp apply_html_filters(post, filters) do
     sanitize? = Map.get(filters, :sanitize_html, true)
     strip_images? = Map.get(filters, :strip_images, false)
+    adapter = sanitizer_adapter()
 
     cond do
+      sanitize? and adapter ->
+        post
+        |> run_adapter(adapter)
+        |> strip_images_only(strip_images?)
+
       sanitize? ->
         opts = %{
           sanitize?: true,
@@ -167,20 +194,40 @@ defmodule Exoplanet.Filters do
         transform_html_fields(post, &walk_node(&1, opts), fn _ -> true end)
 
       strip_images? ->
-        opts = %{
-          sanitize?: false,
-          drop_tags: MapSet.new(),
-          drop_attrs: MapSet.new(),
-          strip_images?: true
-        }
-
         # Short-circuit when html has no <img>: parse/serialize would otherwise
         # rewrite e.g. `&` → `&amp;` and `<br>` → `<br/>`, breaking byte equality.
-        transform_html_fields(post, &walk_node(&1, opts), &has_img?/1)
+        transform_html_fields(post, &walk_node(&1, strip_only_opts()), &has_img?/1)
 
       true ->
         post
     end
+  end
+
+  # Delegate sanitization of :body and :summary to the configured adapter.
+  # The adapter is not invoked on nil/empty fields.
+  defp run_adapter(post, adapter) do
+    post
+    |> Map.update!(:body, &adapter_sanitize(adapter, &1))
+    |> Map.update!(:summary, &adapter_sanitize(adapter, &1))
+  end
+
+  defp adapter_sanitize(_adapter, nil), do: nil
+  defp adapter_sanitize(_adapter, ""), do: ""
+  defp adapter_sanitize(adapter, html) when is_binary(html), do: adapter.sanitize(html)
+
+  # Image-stripping pass applied after an adapter has sanitized. Runs the
+  # existing strip-only walk. The generated image-replacement <a href> is still
+  # scheme-restricted (see image_src/2) since it is exoplanet's own construct.
+  # No-op when strip_images is off.
+  defp strip_images_only(post, false), do: post
+
+  defp strip_images_only(post, true) do
+    transform_html_fields(post, &walk_node(&1, strip_only_opts()), &has_img?/1)
+  end
+
+  # Walk options for an image-stripping-only pass (no tag/attr/scheme dropping).
+  defp strip_only_opts do
+    %{sanitize?: false, drop_tags: MapSet.new(), drop_attrs: MapSet.new(), strip_images?: true}
   end
 
   defp transform_html_fields(post, walker, needs?) do
@@ -240,13 +287,16 @@ defmodule Exoplanet.Filters do
             (name in @url_attrs and not safe_url_value?(name, value))))
   end
 
-  # The src used for the image-replacement link must pass the same scheme
-  # check as a regular src attribute, otherwise stripping images could
-  # smuggle e.g. a javascript: URL into a clickable <a href>.
-  defp image_src(attrs, opts) do
+  # The src used for the generated image-replacement link must always pass the
+  # scheme allowlist — the <a href> is exoplanet's own construct, so this is an
+  # output-safety invariant, not re-sanitization of the source HTML. Applies
+  # even when the surrounding pass has `sanitize?: false` (e.g. strip-only, or
+  # after a sanitizer adapter), so stripping an image can never smuggle a
+  # javascript:/data: URL into a clickable link.
+  defp image_src(attrs, _opts) do
     case attr_value(attrs, "src") do
       nil -> nil
-      src -> if opts.sanitize? and not safe_url?(src), do: nil, else: src
+      src -> if safe_url?(src), do: src, else: nil
     end
   end
 

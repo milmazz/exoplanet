@@ -73,6 +73,27 @@ guarantee — if you render feed HTML in a security-sensitive context,
 consider pairing it with a dedicated sanitizer such as
 [html_sanitize_ex](https://hex.pm/packages/html_sanitize_ex).
 
+To delegate sanitization to such a library, implement the
+`Exoplanet.Sanitizer` behaviour and configure it:
+
+```elixir
+defmodule MyApp.FeedSanitizer do
+  @behaviour Exoplanet.Sanitizer
+
+  @impl true
+  def sanitize(html), do: HtmlSanitizeEx.basic_html(html)
+end
+```
+
+```elixir
+# config/config.exs
+config :exoplanet, sanitizer_adapter: MyApp.FeedSanitizer
+```
+
+When configured (and `sanitize_html` is `true`), the adapter **replaces** the
+built-in sanitizer. `html_sanitize_ex` is not a dependency of Exoplanet — add
+it to your own application.
+
 Note that `Exoplanet.Config.from_file/1` evaluates the config file with
 `Code.eval_file/1` — treat that file as trusted code, like any other `.exs`
 in your project.
