@@ -12,6 +12,15 @@ defmodule Exoplanet.Filters do
   you render feed HTML in a security-sensitive context, consider pairing it
   with a dedicated sanitizer such as `html_sanitize_ex`.
 
+  To delegate sanitization entirely, configure an `Exoplanet.Sanitizer`
+  adapter:
+
+      config :exoplanet, sanitizer_adapter: MyApp.FeedSanitizer
+
+  When set (and `sanitize_html` is `true`), the adapter replaces the built-in
+  sanitize step. `strip_images` and `excerpt_length` still apply, after the
+  adapter. See `Exoplanet.Sanitizer`.
+
   ## Category filters
 
   `allow_categories` accepts a list of strings or `:all` (no allowlist
