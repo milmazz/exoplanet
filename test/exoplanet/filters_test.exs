@@ -220,7 +220,7 @@ defmodule Exoplanet.FiltersTest do
   end
 
   describe "apply/2 — strip_images" do
-    test "replaces <img alt=\"X\" src=\"Y\"> with <a href=\"Y\">X</a> in body" do
+    test ~s|replaces <img alt="X" src="Y"> with <a href="Y">X</a> in body| do
       post = post(body: ~s(<p>before <img alt="cat" src="https://i.example/cat.png"> after</p>))
 
       [result] = Filters.apply([post], filters(strip_images: true))

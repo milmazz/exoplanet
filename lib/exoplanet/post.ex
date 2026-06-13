@@ -2,7 +2,18 @@ defmodule Exoplanet.Post do
   @moduledoc """
   Post definition
 
-  Exoplanet will produce a list of these feed entries
+  Exoplanet will produce a list of these feed entries.
+
+  ## Time zones
+
+  `published` and `updated` are `NaiveDateTime` values: the original UTC offset
+  from the source feed is discarded (RSS dates are parsed by
+  `Exoplanet.DateTimeParser`, Atom dates by `NaiveDateTime.from_iso8601/1`, and
+  neither keeps the zone). The merged feed is sorted by `published` descending,
+  treating each timestamp as wall-clock time, so posts from feeds in different
+  zones can be ordered relative to each other with an error up to the offset
+  difference (~24h). Normalise to UTC yourself if you need globally-correct
+  chronological ordering.
   """
 
   @type t :: %__MODULE__{

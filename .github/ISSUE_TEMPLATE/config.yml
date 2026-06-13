@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/milmazz/exoplanet/security/advisories/new
+    about: >
+      Please report security issues (such as HTML-sanitizer bypasses) privately
+      through GitHub's vulnerability reporting, not as a public issue. See
+      SECURITY.md.
+  - name: Question or usage help
+    url: https://github.com/milmazz/exoplanet/discussions
+    about: For general questions and usage help, please start a discussion.

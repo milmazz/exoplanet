@@ -1,0 +1,52 @@
+name: Bug report
+description: Report a problem with Exoplanet (parsing, filtering, fetching, etc.)
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report!
+
+        **Please do not report security issues here.** Vulnerabilities (for
+        example HTML-sanitizer bypasses) should be reported privately — see
+        [SECURITY.md](../blob/main/SECURITY.md).
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect to happen, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: >
+        Ideally a minimal feed URL or an XML snippet that triggers the problem,
+        plus the relevant config (`sources`, `filters`, etc.).
+      render: elixir
+    validations:
+      required: true
+  - type: input
+    id: exoplanet-version
+    attributes:
+      label: Exoplanet version
+      description: The Hex version or git commit you are running.
+      placeholder: "0.5.0"
+    validations:
+      required: true
+  - type: input
+    id: elixir-otp
+    attributes:
+      label: Elixir / OTP versions
+      placeholder: "Elixir 1.18 / OTP 27"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or stacktrace
+      description: Any relevant warnings, errors, or stacktraces.
+      render: shell
+    validations:
+      required: false

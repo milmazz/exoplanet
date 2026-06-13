@@ -66,3 +66,48 @@ jobs:
 
       - name: Run tests
         run: mix test
+
+  lint:
+    name: Lint (Credo + generated-code drift)
+    runs-on: ubuntu-latest
+
+    env:
+      MIX_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.18"
+          otp-version: "27"
+
+      - name: Cache deps and _build
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-lint-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-lint-
+
+      - name: Install dependencies
+        run: mix deps.get
+
+      - name: Run Credo
+        run: mix credo --strict
+
+      # The committed lib/exoplanet/datetime_parser.ex is generated from the
+      # .ex.exs source. Regenerate it and fail if the result differs, so the
+      # generated file can't silently drift from its definition. The "Generated
+      # at" timestamp header changes on every run, so it is ignored via -I.
+      - name: Verify generated DateTimeParser is up to date
+        run: |
+          mix nimble_parsec.compile lib/exoplanet/datetime_parser.ex.exs
+          if ! git diff --exit-code -I '^# Generated at ' lib/exoplanet/datetime_parser.ex; then
+            echo "::error::lib/exoplanet/datetime_parser.ex is out of sync with lib/exoplanet/datetime_parser.ex.exs."
+            echo "Run 'mix nimble_parsec.compile lib/exoplanet/datetime_parser.ex.exs' and commit both files."
+            exit 1
+          fi

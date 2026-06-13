@@ -87,5 +87,27 @@ defmodule Exoplanet.ParserTest do
       [post | _] = Parser.parse(fixture(:atom_with_trailing_comma_categories), @url, @name)
       assert post.categories == ["release", "otp", "28.5"]
     end
+
+    test "detects Atom when the literal <rss appears only inside entry content" do
+      # Feed-type detection must look at the root element, not any substring.
+      # An Atom entry that merely mentions "<rss" / "<rdf:RDF" in its content
+      # must still be parsed as Atom (the old substring check misfired here).
+      body = """
+      <?xml version="1.0" encoding="utf-8"?>
+      <feed xmlns="http://www.w3.org/2005/Atom">
+        <id>urn:example:feed</id>
+        <title>Example</title>
+        <entry>
+          <title>A post about feed formats</title>
+          <link href="https://example.test/p1" rel="alternate" type="text/html" />
+          <published>2022-02-21T00:00:00Z</published>
+          <id>https://example.test/p1</id>
+          <content type="html"><![CDATA[I built an <rss> and <rdf:RDF> reader.]]></content>
+        </entry>
+      </feed>
+      """
+
+      assert [%Post{title: "A post about feed formats"}] = Parser.parse(body, @url, @name)
+    end
   end
 end

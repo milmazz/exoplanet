@@ -62,6 +62,21 @@ posts  = Exoplanet.build(config)
 exercises every supported field, and `Exoplanet.Filters` for the filter
 semantics.
 
+### A note on ordering and time zones
+
+`Post.published`/`Post.updated` are `NaiveDateTime` values, and the merged feed
+is sorted by `published` descending. Both date paths discard the original UTC
+offset: RSS dates go through `Exoplanet.DateTimeParser` (RFC 822) and Atom dates
+through `NaiveDateTime.from_iso8601/1`, neither of which keeps the zone. This is
+a deliberate trade-off — feeds publish in many zones, and Exoplanet treats every
+timestamp as wall-clock time.
+
+The practical consequence: when two posts from feeds in different zones are
+published close together, their *relative* order can be off by as much as the
+offset difference (up to ~24h). For a human-readable aggregated feed this is
+usually fine; if you need globally-correct chronological ordering, normalise the
+timestamps to UTC yourself before relying on the order.
+
 ### A note on HTML sanitization
 
 With `sanitize_html: true` (the default), Exoplanet removes the tags in

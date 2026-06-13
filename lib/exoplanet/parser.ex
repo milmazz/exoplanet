@@ -17,101 +17,114 @@ defmodule Exoplanet.Parser do
 
   # RSS 2.0 uses <rss ...>, RSS 1.0 uses <rdf:RDF ...>. Both need parse_rss.
   # Atom uses <feed ...>. Anything else falls through to parse_atom and may fail.
+  #
+  # Detection inspects only the first real element (the root), skipping the XML
+  # prolog (<?xml ?>), DOCTYPE and comments (both start with "<!"). Matching the
+  # root rather than any substring means a literal "<rss"/"<rdf:RDF" buried later
+  # in an Atom entry's content or CDATA can no longer flip detection to RSS.
+  @root_element ~r/<(?![?!])([\w:.-]+)/
   defp rss_body?(body) do
-    String.contains?(body, "<rss") or String.contains?(body, "<rdf:RDF")
+    case Regex.run(@root_element, body, capture: :all_but_first) do
+      [root] -> root in ["rss", "rdf:RDF"]
+      nil -> false
+    end
   end
 
   defp parse_rss(url, body, name) do
     case FastRSS.parse_rss(body) do
       {:ok, %{"items" => items}} ->
-        Enum.flat_map(items, fn item ->
-          case rss_published(item, url) do
-            :skip ->
-              []
-
-            {:ok, nil} ->
-              # No usable date (neither <pubDate> nor <dc:date>) — drop the entry;
-              # without a date it can't participate in the chronological merge.
-              []
-
-            {:ok, published} ->
-              title = item["title"]
-              # Prefer <content:encoded> (Content RSS module) over <description> —
-              # feeds like Medium put the full HTML article in content:encoded and
-              # leave description short or empty.
-              content = blank_to_nil(item["content"]) || item["description"]
-              authors = normalize_authors(rss_authors(item), name)
-
-              categories =
-                (item["categories"] || []) |> Enum.map(& &1["name"]) |> clean_categories()
-
-              id = item["link"] || get_in(item, ["guid", "value"])
-
-              attrs = %{
-                feed_url: url,
-                authors: authors,
-                title: title,
-                categories: categories,
-                id: id,
-                published: published
-              }
-
-              [{attrs, content}]
-          end
-        end)
+        Enum.flat_map(items, &parse_rss_item(&1, url, name))
 
       {:error, reason} ->
         log_parse_error(url, reason)
     end
   end
 
+  defp parse_rss_item(item, url, name) do
+    case rss_published(item, url) do
+      :skip ->
+        []
+
+      {:ok, nil} ->
+        # No usable date (neither <pubDate> nor <dc:date>) — drop the entry;
+        # without a date it can't participate in the chronological merge.
+        []
+
+      {:ok, published} ->
+        title = item["title"]
+        # Prefer <content:encoded> (Content RSS module) over <description> —
+        # feeds like Medium put the full HTML article in content:encoded and
+        # leave description short or empty.
+        content = blank_to_nil(item["content"]) || item["description"]
+        authors = normalize_authors(rss_authors(item), name)
+
+        categories =
+          (item["categories"] || []) |> Enum.map(& &1["name"]) |> clean_categories()
+
+        id = item["link"] || get_in(item, ["guid", "value"])
+
+        attrs = %{
+          feed_url: url,
+          authors: authors,
+          title: title,
+          categories: categories,
+          id: id,
+          published: published
+        }
+
+        [{attrs, content}]
+    end
+  end
+
   defp parse_atom(url, body, name) do
     case FastRSS.parse_atom(body) do
       {:ok, %{"entries" => entries}} ->
-        Enum.flat_map(entries, fn entry ->
-          with {:ok, published} <- parse_naive_datetime(entry["published"], url, :iso8601),
-               {:ok, updated} <- parse_naive_datetime(entry["updated"], url, :iso8601),
-               # FastRSS injects 1970-01-01 epoch when <updated> is absent;
-               # treat that sentinel as missing so we skip dateless entries.
-               updated = denull_atom_updated(updated),
-               timestamp when not is_nil(timestamp) <- published || updated do
-            title = get_in(entry, ["title", "value"])
-            content = get_in(entry, ["content", "value"])
-            authors = normalize_authors(get_in(entry, ["authors", Access.all(), "name"]), name)
-
-            categories =
-              get_in(entry, ["categories", Access.all(), "term"]) |> clean_categories()
-
-            # Atom <id> is an IRI per RFC 4287 §4.2.6 — generators like
-            # Bridgetown legitimately emit non-URL URNs (e.g. `repo://...`).
-            # Such an IRI is unusable as a clickable post URL, so prefer the
-            # canonical web link from `<link rel="alternate">` (the spec
-            # default rel) and fall back to <id> only when no usable
-            # alternate link is present.
-            id = atom_post_id(entry)
-            summary = blank_to_nil(get_in(entry, ["summary", "value"]))
-
-            attrs = %{
-              feed_url: url,
-              authors: authors,
-              title: title,
-              categories: categories,
-              id: id,
-              published: timestamp,
-              updated: updated,
-              summary: summary
-            }
-
-            [{attrs, content}]
-          else
-            # `:skip` from parse_naive_datetime, or `nil` from the timestamp
-            # check (entry has neither <published> nor <updated> — drop it).
-            _ -> []
-          end
-        end)
+        Enum.flat_map(entries, &parse_atom_entry(&1, url, name))
 
       {:error, reason} ->
         log_parse_error(url, reason)
+    end
+  end
+
+  defp parse_atom_entry(entry, url, name) do
+    with {:ok, published} <- parse_naive_datetime(entry["published"], url, :iso8601),
+         {:ok, updated} <- parse_naive_datetime(entry["updated"], url, :iso8601),
+         # FastRSS injects 1970-01-01 epoch when <updated> is absent;
+         # treat that sentinel as missing so we skip dateless entries.
+         updated = denull_atom_updated(updated),
+         timestamp when not is_nil(timestamp) <- published || updated do
+      title = get_in(entry, ["title", "value"])
+      content = get_in(entry, ["content", "value"])
+      authors = normalize_authors(get_in(entry, ["authors", Access.all(), "name"]), name)
+
+      categories =
+        get_in(entry, ["categories", Access.all(), "term"]) |> clean_categories()
+
+      # Atom <id> is an IRI per RFC 4287 §4.2.6 — generators like
+      # Bridgetown legitimately emit non-URL URNs (e.g. `repo://...`).
+      # Such an IRI is unusable as a clickable post URL, so prefer the
+      # canonical web link from `<link rel="alternate">` (the spec
+      # default rel) and fall back to <id> only when no usable
+      # alternate link is present.
+      id = atom_post_id(entry)
+      summary = blank_to_nil(get_in(entry, ["summary", "value"]))
+
+      attrs = %{
+        feed_url: url,
+        authors: authors,
+        title: title,
+        categories: categories,
+        id: id,
+        published: timestamp,
+        updated: updated,
+        summary: summary
+      }
+
+      [{attrs, content}]
+    else
+      # `:skip` from parse_naive_datetime, or `nil` from the timestamp
+      # check (entry has neither <published> nor <updated> — drop it).
+      _ -> []
     end
   end
 
