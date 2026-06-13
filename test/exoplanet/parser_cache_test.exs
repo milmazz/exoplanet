@@ -6,15 +6,18 @@ defmodule Exoplanet.ParserCacheTest do
 
   # In-memory cache adapter backed by an Agent. Implements Exoplanet.Cache so
   # it can be wired in via Application.put_env(:exoplanet, :cache_adapter, ...).
+  # Started with `start_supervised!({TestCacheAdapter, entries})`, which links
+  # it to the test supervisor and tears it down (and frees the registered
+  # name) before the next test runs.
   defmodule TestCacheAdapter do
     @behaviour Exoplanet.Cache
 
-    def start(entries \\ %{}) do
-      Agent.start(fn -> entries end, name: __MODULE__)
+    def child_spec(entries) do
+      %{id: __MODULE__, start: {__MODULE__, :start_link, [entries]}}
     end
 
-    def stop do
-      if Process.whereis(__MODULE__), do: Agent.stop(__MODULE__)
+    def start_link(entries) do
+      Agent.start_link(fn -> entries end, name: __MODULE__)
     end
 
     @impl Exoplanet.Cache
@@ -32,12 +35,12 @@ defmodule Exoplanet.ParserCacheTest do
   defmodule NotifyingCacheAdapter do
     @behaviour Exoplanet.Cache
 
-    def start(entries \\ %{}) do
-      Agent.start(fn -> %{entries: entries, notifications: []} end, name: __MODULE__)
+    def child_spec(entries) do
+      %{id: __MODULE__, start: {__MODULE__, :start_link, [entries]}}
     end
 
-    def stop do
-      if Process.whereis(__MODULE__), do: Agent.stop(__MODULE__)
+    def start_link(entries) do
+      Agent.start_link(fn -> %{entries: entries, notifications: []} end, name: __MODULE__)
     end
 
     def notifications do
@@ -81,12 +84,9 @@ defmodule Exoplanet.ParserCacheTest do
   test "304 Not Modified uses cached body" do
     url = "https://www.theerlangelist.com/rss"
 
-    {:ok, _} =
-      TestCacheAdapter.start(%{
-        url => %{etag: "\"abc123\"", last_modified: nil, body: fixture(:rss)}
-      })
-
-    on_exit(fn -> TestCacheAdapter.stop() end)
+    start_supervised!(
+      {TestCacheAdapter, %{url => %{etag: "\"abc123\"", last_modified: nil, body: fixture(:rss)}}}
+    )
 
     Req.Test.stub(Exoplanet.Parser, fn conn ->
       Plug.Conn.send_resp(conn, 304, "")
@@ -101,12 +101,9 @@ defmodule Exoplanet.ParserCacheTest do
   test "network error falls back to cached body" do
     url = "https://www.theerlangelist.com/rss"
 
-    {:ok, _} =
-      TestCacheAdapter.start(%{
-        url => %{etag: "\"abc123\"", last_modified: nil, body: fixture(:rss)}
-      })
-
-    on_exit(fn -> TestCacheAdapter.stop() end)
+    start_supervised!(
+      {TestCacheAdapter, %{url => %{etag: "\"abc123\"", last_modified: nil, body: fixture(:rss)}}}
+    )
 
     Req.Test.stub(Exoplanet.Parser, fn conn ->
       Req.Test.transport_error(conn, :timeout)
@@ -124,8 +121,7 @@ defmodule Exoplanet.ParserCacheTest do
 
   test "200 response with etag updates cache" do
     url = "https://www.theerlangelist.com/rss"
-    {:ok, _} = TestCacheAdapter.start()
-    on_exit(fn -> TestCacheAdapter.stop() end)
+    start_supervised!({TestCacheAdapter, %{}})
 
     Req.Test.stub(Exoplanet.Parser, fn conn ->
       conn
@@ -143,8 +139,7 @@ defmodule Exoplanet.ParserCacheTest do
 
   test "200 response without caching headers does not update cache" do
     url = "https://www.theerlangelist.com/rss"
-    {:ok, _} = TestCacheAdapter.start()
-    on_exit(fn -> TestCacheAdapter.stop() end)
+    start_supervised!({TestCacheAdapter, %{}})
 
     stub_feed(:rss)
 
@@ -156,8 +151,7 @@ defmodule Exoplanet.ParserCacheTest do
   describe "notification callbacks" do
     setup do
       Application.put_env(:exoplanet, :cache_adapter, NotifyingCacheAdapter)
-      {:ok, _} = NotifyingCacheAdapter.start()
-      on_exit(fn -> NotifyingCacheAdapter.stop() end)
+      start_supervised!({NotifyingCacheAdapter, %{}})
       :ok
     end
 
