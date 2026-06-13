@@ -75,8 +75,8 @@ defmodule Exoplanet.FiltersSanitizerTest do
   end
 
   test "the adapter is not called when sanitize_html is false" do
-    start_supervised!(RecordingSanitizer)
     Application.put_env(:exoplanet, :sanitizer_adapter, RecordingSanitizer)
+    start_supervised!(RecordingSanitizer)
 
     html = ~s(<p>hi</p><iframe></iframe>)
     [out] = Filters.apply([post(%{body: html})], filters(%{sanitize_html: false}))
@@ -87,8 +87,8 @@ defmodule Exoplanet.FiltersSanitizerTest do
   end
 
   test "the adapter is called once per non-empty field, skipping nil/empty" do
-    start_supervised!(RecordingSanitizer)
     Application.put_env(:exoplanet, :sanitizer_adapter, RecordingSanitizer)
+    start_supervised!(RecordingSanitizer)
 
     Filters.apply([post(%{body: "<p>b</p>", summary: ""})], filters())
     # body is sanitized; summary "" is skipped; nil fields are skipped.
