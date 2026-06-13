@@ -147,13 +147,27 @@ defmodule Exoplanet.Filters do
     |> apply_excerpt(filters)
   end
 
+  # Optional sanitizer adapter (an `Exoplanet.Sanitizer` implementation). Read
+  # per call, mirroring how `Exoplanet.Fetcher` reads `:cache_adapter`.
+  defp sanitizer_adapter, do: Application.get_env(:exoplanet, :sanitizer_adapter)
+
   # Single tree walk that fuses sanitization and image stripping. Returns the
   # post unchanged when neither filter is enabled (no parse/serialize cost).
+  #
+  # When a `:sanitizer_adapter` is configured and `sanitize_html` is true, the
+  # adapter replaces the built-in sanitize walk; `strip_images` then runs after,
+  # via the existing strip-only walk.
   defp apply_html_filters(post, filters) do
     sanitize? = Map.get(filters, :sanitize_html, true)
     strip_images? = Map.get(filters, :strip_images, false)
+    adapter = sanitizer_adapter()
 
     cond do
+      sanitize? and adapter ->
+        post
+        |> run_adapter(adapter)
+        |> strip_images_only(strip_images?)
+
       sanitize? ->
         opts = %{
           sanitize?: true,
@@ -181,6 +195,34 @@ defmodule Exoplanet.Filters do
       true ->
         post
     end
+  end
+
+  # Delegate sanitization of :body and :summary to the configured adapter.
+  # The adapter is not invoked on nil/empty fields.
+  defp run_adapter(post, adapter) do
+    post
+    |> Map.update!(:body, &adapter_sanitize(adapter, &1))
+    |> Map.update!(:summary, &adapter_sanitize(adapter, &1))
+  end
+
+  defp adapter_sanitize(_adapter, nil), do: nil
+  defp adapter_sanitize(_adapter, ""), do: ""
+  defp adapter_sanitize(adapter, html) when is_binary(html), do: adapter.sanitize(html)
+
+  # Image-stripping pass applied after an adapter has sanitized. Runs the
+  # existing strip-only walk (no built-in scheme re-check — the adapter is the
+  # sanitization authority for this content). No-op when strip_images is off.
+  defp strip_images_only(post, false), do: post
+
+  defp strip_images_only(post, true) do
+    opts = %{
+      sanitize?: false,
+      drop_tags: MapSet.new(),
+      drop_attrs: MapSet.new(),
+      strip_images?: true
+    }
+
+    transform_html_fields(post, &walk_node(&1, opts), &has_img?/1)
   end
 
   defp transform_html_fields(post, walker, needs?) do
