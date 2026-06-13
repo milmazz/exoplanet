@@ -13,7 +13,7 @@ defmodule Exoplanet.ReqOptionsTest do
     on_exit(fn ->
       Application.delete_env(:exoplanet, :planet_req_options)
       Application.put_env(:exoplanet, :req_options, opts)
-      :persistent_term.erase({Exoplanet.Parser, :legacy_req_options_warned})
+      :persistent_term.erase({Exoplanet.Fetcher, :legacy_req_options_warned})
     end)
 
     stub_feed(:atom)

@@ -61,18 +61,24 @@ defmodule Exoplanet do
   end
 
   # Fetch, parse, filter, and cap a single source.
-  defp build_source({_url, attrs} = source, defaults, config) do
+  defp build_source({url, attrs}, defaults, config) do
     filters = Exoplanet.Filters.merge(defaults, attrs[:filters])
 
-    source
-    |> Exoplanet.Parser.parse(config)
-    |> Exoplanet.Filters.apply(filters)
-    # Sort each per-feed list by publication date (descending) before
-    # capping with `new_feed_items`. Some feeds don't emit entries in
-    # newest-first order; without this sort, document-order older
-    # entries can crowd out the genuinely-recent ones.
-    |> sort_by_published_desc()
-    |> Enum.take(config.new_feed_items)
+    case Exoplanet.Fetcher.fetch(url, config) do
+      nil ->
+        []
+
+      body ->
+        body
+        |> Exoplanet.Parser.parse(url, attrs.name)
+        |> Exoplanet.Filters.apply(filters)
+        # Sort each per-feed list by publication date (descending) before
+        # capping with `new_feed_items`. Some feeds don't emit entries in
+        # newest-first order; without this sort, document-order older
+        # entries can crowd out the genuinely-recent ones.
+        |> sort_by_published_desc()
+        |> Enum.take(config.new_feed_items)
+    end
   end
 
   # Newest first; posts without a date sort to the end via the year-0 sentinel.

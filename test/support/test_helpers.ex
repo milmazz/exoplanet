@@ -15,20 +15,20 @@ defmodule Exoplanet.TestHelpers do
     File.read!(Path.join(@fixtures_dir, "#{name}.xml"))
   end
 
-  @doc "Stub `Exoplanet.Parser` to return the given fixture for every request."
+  @doc "Stub `Exoplanet.Fetcher` to return the given fixture for every request."
   def stub_feed(name) when is_atom(name) do
     body = fixture(name)
-    Req.Test.stub(Exoplanet.Parser, fn conn -> Req.Test.html(conn, body) end)
+    Req.Test.stub(Exoplanet.Fetcher, fn conn -> Req.Test.html(conn, body) end)
   end
 
   @doc """
-  Stub `Exoplanet.Parser` to dispatch by `conn.host` to a fixture name.
+  Stub `Exoplanet.Fetcher` to dispatch by `conn.host` to a fixture name.
   Useful for multi-source tests (e.g. ordering across feeds).
   """
   def stub_feeds(routes) when is_map(routes) do
     bodies = Map.new(routes, fn {host, name} -> {host, fixture(name)} end)
 
-    Req.Test.stub(Exoplanet.Parser, fn conn ->
+    Req.Test.stub(Exoplanet.Fetcher, fn conn ->
       Req.Test.html(conn, Map.fetch!(bodies, conn.host))
     end)
   end

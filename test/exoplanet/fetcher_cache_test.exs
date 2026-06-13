@@ -1,4 +1,4 @@
-defmodule Exoplanet.ParserCacheTest do
+defmodule Exoplanet.FetcherCacheTest do
   use ExUnit.Case, async: false
 
   import ExUnit.CaptureLog
@@ -88,7 +88,7 @@ defmodule Exoplanet.ParserCacheTest do
       {TestCacheAdapter, %{url => %{etag: "\"abc123\"", last_modified: nil, body: fixture(:rss)}}}
     )
 
-    Req.Test.stub(Exoplanet.Parser, fn conn ->
+    Req.Test.stub(Exoplanet.Fetcher, fn conn ->
       Plug.Conn.send_resp(conn, 304, "")
     end)
 
@@ -105,7 +105,7 @@ defmodule Exoplanet.ParserCacheTest do
       {TestCacheAdapter, %{url => %{etag: "\"abc123\"", last_modified: nil, body: fixture(:rss)}}}
     )
 
-    Req.Test.stub(Exoplanet.Parser, fn conn ->
+    Req.Test.stub(Exoplanet.Fetcher, fn conn ->
       Req.Test.transport_error(conn, :timeout)
     end)
 
@@ -123,7 +123,7 @@ defmodule Exoplanet.ParserCacheTest do
     url = "https://www.theerlangelist.com/rss"
     start_supervised!({TestCacheAdapter, %{}})
 
-    Req.Test.stub(Exoplanet.Parser, fn conn ->
+    Req.Test.stub(Exoplanet.Fetcher, fn conn ->
       conn
       |> Plug.Conn.put_resp_header("etag", "\"v1\"")
       |> Req.Test.html(fixture(:rss))
@@ -173,7 +173,7 @@ defmodule Exoplanet.ParserCacheTest do
         body: fixture(:rss)
       })
 
-      Req.Test.stub(Exoplanet.Parser, fn conn ->
+      Req.Test.stub(Exoplanet.Fetcher, fn conn ->
         Plug.Conn.send_resp(conn, 304, "")
       end)
 
@@ -185,7 +185,7 @@ defmodule Exoplanet.ParserCacheTest do
     test "on_error/3 is called with the status for unexpected HTTP responses" do
       url = "https://www.theerlangelist.com/rss"
 
-      Req.Test.stub(Exoplanet.Parser, fn conn ->
+      Req.Test.stub(Exoplanet.Fetcher, fn conn ->
         Plug.Conn.send_resp(conn, 500, "boom")
       end)
 
@@ -201,7 +201,7 @@ defmodule Exoplanet.ParserCacheTest do
     test "on_error/3 is called with nil status for transport errors" do
       url = "https://www.theerlangelist.com/rss"
 
-      Req.Test.stub(Exoplanet.Parser, fn conn ->
+      Req.Test.stub(Exoplanet.Fetcher, fn conn ->
         Req.Test.transport_error(conn, :timeout)
       end)
 
