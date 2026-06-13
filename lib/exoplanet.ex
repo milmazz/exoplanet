@@ -32,8 +32,8 @@ defmodule Exoplanet do
     source_list = Enum.to_list(sources)
 
     # `feed_timeout` bounds the HTTP request itself (`receive_timeout` in
-    # `Exoplanet.Parser`); the task timeout adds a 1s grace period so the
-    # HTTP timeout fires first and the parser can still fall back to a
+    # `Exoplanet.Fetcher`); the task timeout adds a 1s grace period so the
+    # HTTP timeout fires first and the fetcher can still fall back to a
     # cached body. The task kill is a backstop for anything else that hangs.
     source_list
     |> Task.async_stream(&build_source(&1, defaults, config),
