@@ -106,6 +106,20 @@ defmodule Exoplanet.FiltersSanitizerTest do
     assert out.body =~ ~s(<a href="https://e/x.png">Pic</a>)
   end
 
+  test "strip_images does not promote a javascript: img src into a clickable href" do
+    Application.put_env(:exoplanet, :sanitizer_adapter, PassthroughSanitizer)
+
+    html = ~s{<p>x</p><img src="javascript:alert(1)" alt="click me">}
+    [out] = Filters.apply([post(%{body: html})], filters(%{strip_images: true}))
+
+    # The adapter kept the <img>; exoplanet's strip pass must NOT move the
+    # javascript: URL into an <a href>. A disallowed scheme drops the href,
+    # leaving just the alt text.
+    refute out.body =~ "javascript:"
+    refute out.body =~ "<a"
+    assert out.body =~ "click me"
+  end
+
   test "with no adapter configured, output matches the built-in sanitizer" do
     # :sanitizer_adapter is unset (setup deletes it on exit; not set here).
     html = ~s|<p>ok</p><script>evil()</script>|

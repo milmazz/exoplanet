@@ -14,9 +14,11 @@ defmodule Exoplanet.Sanitizer do
   **replaces** the built-in sanitizer — it is the single authority for what
   HTML is allowed. The built-in `drop_tags`/`drop_attrs`/scheme-allowlist walk
   does not run. The `strip_images` and `excerpt_length` filters are content
-  shaping (not sanitization) and still run, after the adapter. Setting
-  `sanitize_html: false` disables sanitization entirely and the adapter is not
-  called.
+  shaping (not sanitization) and still run, after the adapter. Image-replacement
+  links produced by `strip_images` remain scheme-restricted
+  (`http`/`https`/`mailto` or relative), since those links are constructed by
+  Exoplanet itself. Setting `sanitize_html: false` disables sanitization
+  entirely and the adapter is not called.
 
   Set `:sanitizer_adapter` to `nil` (or omit it) to use the built-in sanitizer.
 

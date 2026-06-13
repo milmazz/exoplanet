@@ -216,8 +216,9 @@ defmodule Exoplanet.Filters do
   defp adapter_sanitize(adapter, html) when is_binary(html), do: adapter.sanitize(html)
 
   # Image-stripping pass applied after an adapter has sanitized. Runs the
-  # existing strip-only walk (no built-in scheme re-check — the adapter is the
-  # sanitization authority for this content). No-op when strip_images is off.
+  # existing strip-only walk. The generated image-replacement <a href> is still
+  # scheme-restricted (see image_src/2) since it is exoplanet's own construct.
+  # No-op when strip_images is off.
   defp strip_images_only(post, false), do: post
 
   defp strip_images_only(post, true) do
@@ -286,13 +287,16 @@ defmodule Exoplanet.Filters do
             (name in @url_attrs and not safe_url_value?(name, value))))
   end
 
-  # The src used for the image-replacement link must pass the same scheme
-  # check as a regular src attribute, otherwise stripping images could
-  # smuggle e.g. a javascript: URL into a clickable <a href>.
-  defp image_src(attrs, opts) do
+  # The src used for the generated image-replacement link must always pass the
+  # scheme allowlist — the <a href> is exoplanet's own construct, so this is an
+  # output-safety invariant, not re-sanitization of the source HTML. Applies
+  # even when the surrounding pass has `sanitize?: false` (e.g. strip-only, or
+  # after a sanitizer adapter), so stripping an image can never smuggle a
+  # javascript:/data: URL into a clickable link.
+  defp image_src(attrs, _opts) do
     case attr_value(attrs, "src") do
       nil -> nil
-      src -> if opts.sanitize? and not safe_url?(src), do: nil, else: src
+      src -> if safe_url?(src), do: src, else: nil
     end
   end
 
