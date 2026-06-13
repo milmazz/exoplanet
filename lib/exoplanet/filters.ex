@@ -138,7 +138,9 @@ defmodule Exoplanet.Filters do
   entirely. The `sanitize_html` and `strip_images` filters modify each post's
   `:body` and `:summary`. The `excerpt_length` filter modifies only `:summary`.
   Sanitization runs first, then image stripping, then excerpt generation.
-  When both HTML filters are enabled they share a single tree walk.
+  When both built-in HTML filters are enabled they share a single tree walk;
+  with a `sanitizer_adapter` configured, sanitization and image stripping run
+  as separate passes.
   """
   @spec apply([Exoplanet.Post.t()], t()) :: [Exoplanet.Post.t()]
   def apply(posts, filters) do
