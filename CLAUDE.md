@@ -40,7 +40,7 @@ mix precommit         # Run all CI checks locally (compile, format, deps.unlock,
 
 ## Architecture
 
-The pipeline flows: **Config → Parser (per source) → Post → Filters → sorted list**.
+The pipeline flows: **Config → Fetcher (HTTP+Cache) → Parser (per source) → Post → Filters → sorted list**.
 
 - `Exoplanet.build/1` is the main entry point — takes a `Config` struct, fetches and parses feeds concurrently via `Task.async_stream` (`on_timeout: :kill_task`; a feed that exceeds `feed_timeout` + 1s grace is dropped with a logged warning, never crashing the build), applies per-source filters, caps each source at `new_feed_items`, sorts the merged list by `published` (descending; `nil` sorts to the end), and takes the top `items`.
 - `Exoplanet.Config` — struct with feed sources and settings. Loaded from a `.exs` file via `Config.from_file/1` (see `example/planet_beam.exs`). Required: `sources` (a map of `feed_url => %{name: "Author"}` plus optional per-feed keys: `homepage`, `language`, `filters`). Optional config keys: `default_filters`, `new_feed_items`, `feed_timeout`, `items`. Unknown keys are ignored by `from_file/1` so one `.exs` file can also hold consumer-side settings.
@@ -53,7 +53,7 @@ The pipeline flows: **Config → Parser (per source) → Post → Filters → so
 
 ## Testing
 
-Tests use `Req.Test.stub/2` to mock HTTP requests (configured in `test/test_helper.exs`), so no real network calls are made. The stub is keyed on `Exoplanet.Fetcher`. Feed XML fixtures live in `test/support/fixtures/feeds/*.xml`, loaded via the `stub_feed/1` / `stub_feeds/1` helpers in `test/support/test_helpers.ex`. Cache adapter tests use in-process `Agent`-backed adapters defined inline in `test/exoplanet/parser_cache_test.exs`.
+Tests use `Req.Test.stub/2` to mock HTTP requests (configured in `test/test_helper.exs`), so no real network calls are made. The stub is keyed on `Exoplanet.Fetcher`. Feed XML fixtures live in `test/support/fixtures/feeds/*.xml`, loaded via the `stub_feed/1` / `stub_feeds/1` helpers in `test/support/test_helpers.ex`. Cache adapter tests use in-process `Agent`-backed adapters defined inline in `test/exoplanet/fetcher_cache_test.exs`.
 
 ### Test Environment
 
