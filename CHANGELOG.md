@@ -5,7 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [unreleased]
+## [0.6.0] - 2026-06-13
+
+### Added
+
+- `Exoplanet.Sanitizer` behaviour: optionally delegate HTML sanitization to a
+  comprehensive library (e.g. `html_sanitize_ex`) via
+  `config :exoplanet, sanitizer_adapter: MyAdapter`. When set, the adapter
+  replaces the built-in sanitizer.
+- `CONTRIBUTING.md` with development setup, test conventions, and the
+  `DateTimeParser` regeneration workflow.
+
+### Changed
+
+- `feed_timeout` is now enforced at the HTTP layer as Req's
+  `:receive_timeout` (it previously only bounded the surrounding task), and
+  Req's automatic retries are now disabled by default — a retried request
+  could never finish inside the task backstop anyway, and a prompt error
+  return is what enables the cached-body fallback. Re-enable retries via
+  `:req_options` if you need them.
+- `Exoplanet.Config.from_file/1` and `Exoplanet.build/1` now share one
+  canonical defaults-merge path (`Exoplanet.Filters.merge/2`); `nil` values
+  in `default_filters` keep the library default in both entry points.
+- `Exoplanet.DateTimeParser.parse/1` now always returns
+  `{:ok, NaiveDateTime.t()}` or a two-element `{:error, reason}` tuple
+  (it previously leaked NimbleParsec's six-element error tuple).
+
+### Deprecated
+
+- The application env key for extra Req options is now `:req_options`.
+  The old `:planet_req_options` key keeps working as a deprecated fallback
+  and logs a one-time deprecation warning — rename it to `:req_options`
+  (`config :exoplanet, req_options: [...]`).
 
 ### Fixed
 
@@ -31,33 +62,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `srcset`, `action`, `formaction`, `poster`, `xlink:href`) whose URL
   scheme is not `http`, `https`, or `mailto` (relative URLs are kept).
   Previously `javascript:` links and inline event handlers passed through.
-
-### Changed
-
-- `feed_timeout` is now enforced at the HTTP layer as Req's
-  `:receive_timeout` (it previously only bounded the surrounding task), and
-  Req's automatic retries are now disabled by default — a retried request
-  could never finish inside the task backstop anyway, and a prompt error
-  return is what enables the cached-body fallback. Re-enable retries via
-  `:req_options` if you need them.
-- The application env key for extra Req options is now `:req_options`.
-  The old `:planet_req_options` key keeps working as a deprecated fallback
-  and logs a one-time deprecation warning.
-- `Exoplanet.Config.from_file/1` and `Exoplanet.build/1` now share one
-  canonical defaults-merge path (`Exoplanet.Filters.merge/2`); `nil` values
-  in `default_filters` keep the library default in both entry points.
-- `Exoplanet.DateTimeParser.parse/1` now always returns
-  `{:ok, NaiveDateTime.t()}` or a two-element `{:error, reason}` tuple
-  (it previously leaked NimbleParsec's six-element error tuple).
-
-### Added
-
-- `Exoplanet.Sanitizer` behaviour: optionally delegate HTML sanitization to a
-  comprehensive library (e.g. `html_sanitize_ex`) via
-  `config :exoplanet, sanitizer_adapter: MyAdapter`. When set, the adapter
-  replaces the built-in sanitizer.
-- `CONTRIBUTING.md` with development setup, test conventions, and the
-  `DateTimeParser` regeneration workflow.
+- The default `drop_tags` now also drops the SVG SMIL animation elements
+  `animate`, `set`, `animateTransform`, and `animateMotion`. These can
+  animate an ancestor `<a>`'s `href` to a `javascript:` URL via their
+  `to`/`values`/`from`/`by` attributes — attribute names the URL-scheme
+  allowlist does not cover — so the payload previously survived
+  sanitization. Inline `<svg>` images are unaffected. Configs that set
+  `drop_tags` explicitly should add these four element names.
 
 ## [0.5.0] - 2026-05-09
 
@@ -235,7 +246,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release.
 
-[unreleased]: https://github.com/milmazz/exoplanet/compare/v0.5.0...HEAD
+[unreleased]: https://github.com/milmazz/exoplanet/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/milmazz/exoplanet/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/milmazz/exoplanet/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/milmazz/exoplanet/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/milmazz/exoplanet/compare/v0.3.0...v0.4.0

@@ -51,8 +51,8 @@ Post → Filters → sorted list**:
 | `Exoplanet.DateTimeParser` | RFC 822 date parser (generated, see below) |
 | `Exoplanet.Cache` | Optional behaviour for HTTP conditional-GET caching |
 
-See `example/planet_beam.exs` for a config file that
-exercises every supported field.
+See `example/planet_beam.exs` for a fuller config file (it leaves the
+sanitizer `drop_tags` / `drop_attrs` at their secure defaults).
 
 ## Testing
 
@@ -120,9 +120,10 @@ Open a [GitHub issue](https://github.com/milmazz/exoplanet/issues) with:
 - Elixir/OTP versions and the Exoplanet version.
 
 If you believe you have found a security-sensitive problem (for example in
-the HTML sanitizer), please email the maintainer privately instead of
-opening a public issue — see the maintainer contact on the
-[Hex package page](https://hex.pm/packages/exoplanet).
+the HTML sanitizer), please **do not** open a public issue. Follow the
+private reporting process in
+[SECURITY.md](https://github.com/milmazz/exoplanet/blob/main/SECURITY.md)
+instead.
 
 ## License
 
