@@ -37,14 +37,15 @@ and `test`.
 
 ## Project layout
 
-The pipeline flows **Config → Parser (per source) → Post → Filters → sorted
-list**:
+The pipeline flows **Config → Fetcher (HTTP+Cache) → Parser (per source) →
+Post → Filters → sorted list**:
 
 | Module | Responsibility |
 |---|---|
 | `Exoplanet` | Entry point: fetches feeds concurrently, filters, sorts, caps |
 | `Exoplanet.Config` | Configuration struct; loaded from an `.exs` file |
-| `Exoplanet.Parser` | HTTP fetch + RSS/Atom XML parsing into `Post` structs |
+| `Exoplanet.Fetcher` | HTTP fetch + `Exoplanet.Cache` interaction (`fetch/2`) |
+| `Exoplanet.Parser` | Pure `parse(body, url, name)` → RSS/Atom XML parsing into `Post` structs |
 | `Exoplanet.Post` | One feed entry |
 | `Exoplanet.Filters` | Category allow/block, HTML sanitization, excerpts |
 | `Exoplanet.DateTimeParser` | RFC 822 date parser (generated, see below) |
@@ -57,14 +58,14 @@ exercises every supported field.
 
 Tests never hit the network. HTTP requests are stubbed with
 [`Req.Test`](https://hexdocs.pm/req/Req.Test.html), wired up in
-`test/test_helper.exs` and keyed on `Exoplanet.Parser`.
+`test/test_helper.exs` and keyed on `Exoplanet.Fetcher`.
 
 - Feed XML fixtures live in `test/support/fixtures/feeds/*.xml`.
 - `test/support/test_helpers.ex` provides
   `stub_feed/1` (one fixture for every request) and `stub_feeds/1`
   (dispatch by host) helpers.
 - Cache adapter tests use in-process `Agent`-backed adapters defined inline
-  in `test/exoplanet/parser_cache_test.exs`.
+  in `test/exoplanet/fetcher_cache_test.exs`.
 
 When fixing a bug, please add a regression test that documents the bug it
 guards against — see the existing tests for the style.
