@@ -158,7 +158,7 @@ defmodule ExoplanetTest do
 
   describe "blank authors" do
     test "rss: blank <author> falls back to the source's configured name" do
-      Req.Test.stub(Exoplanet.Parser, fn conn ->
+      Req.Test.stub(Exoplanet.Fetcher, fn conn ->
         Req.Test.html(conn, """
         <rss version="2.0">
           <channel>
@@ -183,7 +183,7 @@ defmodule ExoplanetTest do
     end
 
     test "atom: every blank <author><name>...</name></author> falls back to the source name" do
-      Req.Test.stub(Exoplanet.Parser, fn conn ->
+      Req.Test.stub(Exoplanet.Fetcher, fn conn ->
         Req.Test.html(conn, """
         <?xml version="1.0" encoding="utf-8"?>
         <feed xmlns="http://www.w3.org/2005/Atom">
@@ -269,7 +269,7 @@ defmodule ExoplanetTest do
 
   describe "errors" do
     test "logs when an atom feed fails to parse" do
-      Req.Test.stub(Exoplanet.Parser, fn conn ->
+      Req.Test.stub(Exoplanet.Fetcher, fn conn ->
         Req.Test.html(conn, ~s(<?xml version="1.0" encoding="utf-8"?>\n))
       end)
 
@@ -284,7 +284,7 @@ defmodule ExoplanetTest do
     end
 
     test "logs when an rss feed fails to parse" do
-      Req.Test.stub(Exoplanet.Parser, fn conn ->
+      Req.Test.stub(Exoplanet.Fetcher, fn conn ->
         Req.Test.html(conn, """
         <?xml version="1.0" encoding="utf-8"?>
         <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
@@ -313,7 +313,7 @@ defmodule ExoplanetTest do
         Req.Test.html(conn, Exoplanet.TestHelpers.fixture(:atom))
       end
 
-      Req.Test.stub(Exoplanet.Parser, stub)
+      Req.Test.stub(Exoplanet.Fetcher, stub)
 
       sources = %{
         "https://slow.example/feed.xml" => %{name: "Slow"},
@@ -331,7 +331,7 @@ defmodule ExoplanetTest do
     end
 
     test "logs when a source can't be retrieved" do
-      Req.Test.stub(Exoplanet.Parser, fn conn ->
+      Req.Test.stub(Exoplanet.Fetcher, fn conn ->
         Req.Test.transport_error(conn, :timeout)
       end)
 
@@ -447,7 +447,7 @@ defmodule ExoplanetTest do
     test "applies library default sanitize_html when user omits it" do
       url = "https://sanitize-test.example/feed.xml"
 
-      Req.Test.stub(Exoplanet.Parser, fn conn ->
+      Req.Test.stub(Exoplanet.Fetcher, fn conn ->
         Req.Test.html(conn, """
         <?xml version="1.0" encoding="utf-8"?>
         <feed xmlns="http://www.w3.org/2005/Atom">
@@ -479,7 +479,7 @@ defmodule ExoplanetTest do
 
   describe "dc:creator" do
     test "rss: uses <dc:creator> when <author> is absent" do
-      Req.Test.stub(Exoplanet.Parser, fn conn ->
+      Req.Test.stub(Exoplanet.Fetcher, fn conn ->
         data = """
         <rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
           <channel>
@@ -507,7 +507,7 @@ defmodule ExoplanetTest do
     end
 
     test "rss: prefers <dc:creator> over <author> when both are present" do
-      Req.Test.stub(Exoplanet.Parser, fn conn ->
+      Req.Test.stub(Exoplanet.Fetcher, fn conn ->
         data = """
         <rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
           <channel>
@@ -536,7 +536,7 @@ defmodule ExoplanetTest do
     end
 
     test "rss: collects multiple <dc:creator> entries in order" do
-      Req.Test.stub(Exoplanet.Parser, fn conn ->
+      Req.Test.stub(Exoplanet.Fetcher, fn conn ->
         data = """
         <rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
           <channel>
@@ -583,7 +583,7 @@ defmodule ExoplanetTest do
     end
 
     test "rss: missing <pubDate> drops the post (no date = not sortable)" do
-      Req.Test.stub(Exoplanet.Parser, fn conn ->
+      Req.Test.stub(Exoplanet.Fetcher, fn conn ->
         Req.Test.html(conn, """
         <?xml version="1.0" encoding="utf-8"?>
         <rss version="2.0">
@@ -616,7 +616,7 @@ defmodule ExoplanetTest do
     end
 
     test "atom: entry with neither <published> nor <updated> is dropped" do
-      Req.Test.stub(Exoplanet.Parser, fn conn ->
+      Req.Test.stub(Exoplanet.Fetcher, fn conn ->
         Req.Test.html(conn, """
         <?xml version="1.0" encoding="utf-8"?>
         <feed xmlns="http://www.w3.org/2005/Atom">

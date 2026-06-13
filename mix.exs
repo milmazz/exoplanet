@@ -56,6 +56,7 @@ defmodule Exoplanet.MixProject do
       extras: ["README.md", "CHANGELOG.md", "CONTRIBUTING.md"],
       # Private modules referenced from the changelog and contributing guide.
       skip_code_autolink_to: [
+        "Exoplanet.Fetcher",
         "Exoplanet.Parser",
         "Exoplanet.DateTimeParser",
         "Exoplanet.DateTimeParser.parse/1"
