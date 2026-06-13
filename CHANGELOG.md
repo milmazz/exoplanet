@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Exoplanet.Parser` now ensures the cache adapter module is loaded before
   probing for the optional `on_success`/`on_error` callbacks, so they are no
   longer silently skipped in interactive/dev environments.
+- RSS/Atom detection now inspects only the feed's root element instead of
+  scanning the whole body for `<rss`/`<rdf:RDF`. An Atom feed that merely
+  mentions those strings inside an entry's content is no longer misparsed
+  as RSS.
 
 ### Security
 

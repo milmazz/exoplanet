@@ -82,6 +82,9 @@ defmodule Exoplanet do
   end
 
   # Newest first; posts without a date sort to the end via the year-0 sentinel.
+  # Timestamps are NaiveDateTime (source UTC offsets are discarded upstream), so
+  # cross-feed ordering is wall-clock and can be skewed by up to the offset
+  # difference — see the "Time zones" section in `Exoplanet.Post`.
   defp sort_by_published_desc(posts) do
     Enum.sort_by(posts, &(&1.published || ~N[0000-01-01 00:00:00]), {:desc, NaiveDateTime})
   end

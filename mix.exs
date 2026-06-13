@@ -45,6 +45,7 @@ defmodule Exoplanet.MixProject do
       {:lazy_html, "~> 0.1"},
       {:nimble_parsec, "~> 1.0", only: [:dev, :test], runtime: false},
       {:plug, "~> 1.0", only: [:test]},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.34", only: [:dev, :test], runtime: false}
     ]
   end
@@ -70,6 +71,7 @@ defmodule Exoplanet.MixProject do
         "compile --warnings-as-errors",
         "format --check-formatted",
         "deps.unlock --check-unused",
+        "credo --strict",
         "docs --warnings-as-errors",
         "test"
       ]
