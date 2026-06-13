@@ -8,7 +8,7 @@
 
 **Tech Stack:** Elixir, ExUnit. Two repos: `/Users/milmazz/Dev/elixir-lang/planet/exoplanet` and `/Users/milmazz/Dev/elixir-lang/planet/planet_beam`.
 
-**Spec:** `exoplanet/docs/superpowers/specs/2026-05-09-categories-all-none-semantics-design.md`
+**Spec:** `.claude/specs/2026-05-09-categories-all-none-semantics-design.md`
 
 **Branches:**
 - `exoplanet`: `categories-all-none-semantics` (already created — verify with `git branch --show-current` before starting)

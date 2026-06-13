@@ -28,6 +28,11 @@ mix precommit         # Run all CI checks locally (compile, format, deps.unlock,
 
 - Never make edits directly on `main` — create a feature branch first.
 
+## Superpowers Workflow
+
+- Specs and plans created by the `superpowers` plugin (brainstorming → writing-plans) must land under the `.claude/` directory, not `docs/`: write specs to `.claude/specs/YYYY-MM-DD-<topic>-design.md` and plans to `.claude/plans/YYYY-MM-DD-<feature>.md`. These paths override the skills' `docs/superpowers/...` defaults.
+- When a superpowers skill offers an implementation/execution approach (e.g. writing-plans' "Subagent-Driven vs Inline" choice), always choose the **Subagent-Driven** approach (`subagent-driven-development`).
+
 ## Implementation Discipline
 
 ### Behavior on Ambiguity

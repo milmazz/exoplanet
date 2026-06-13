@@ -8,7 +8,7 @@
 
 **Tech Stack:** Elixir, ExUnit, `LazyHTML` (existing HTML manipulation in Filters).
 
-**Spec:** `docs/superpowers/specs/2026-06-13-sanitizer-adapter-design.md`
+**Spec:** `.claude/specs/2026-06-13-sanitizer-adapter-design.md`
 
 ---
 

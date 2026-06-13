@@ -8,7 +8,7 @@
 
 **Tech Stack:** Elixir, ExUnit, `Req` / `Req.Test`, `fast_rss` (NIF), `lazy_html`.
 
-**Spec:** `docs/superpowers/specs/2026-06-13-split-fetcher-parser-design.md`
+**Spec:** `.claude/specs/2026-06-13-split-fetcher-parser-design.md`
 
 ---
 
