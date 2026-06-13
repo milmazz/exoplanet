@@ -11,6 +11,29 @@ defmodule Exoplanet.FiltersSanitizerTest do
     def sanitize(html), do: html
   end
 
+  # Removes the literal marker "SECRET" — proves the adapter's effect lands.
+  defmodule RedactingSanitizer do
+    @behaviour Exoplanet.Sanitizer
+    @impl true
+    def sanitize(html), do: String.replace(html, "SECRET", "***")
+  end
+
+  # Records every input it sees in an Agent named __MODULE__, then returns the
+  # html unchanged. Lets tests assert which fields the adapter was called with.
+  defmodule RecordingSanitizer do
+    @behaviour Exoplanet.Sanitizer
+
+    def child_spec(_), do: %{id: __MODULE__, start: {__MODULE__, :start_link, []}}
+    def start_link, do: Agent.start_link(fn -> [] end, name: __MODULE__)
+    def calls, do: Agent.get(__MODULE__, &Enum.reverse/1)
+
+    @impl true
+    def sanitize(html) do
+      Agent.update(__MODULE__, &[html | &1])
+      html
+    end
+  end
+
   defp post(attrs) do
     struct(
       Exoplanet.Post,
@@ -36,5 +59,59 @@ defmodule Exoplanet.FiltersSanitizerTest do
     # Built-in would drop <iframe>; the passthrough adapter keeps it, proving
     # the built-in walk did not run.
     assert out.body =~ "<iframe"
+  end
+
+  test "the adapter's transformation appears in body and summary" do
+    Application.put_env(:exoplanet, :sanitizer_adapter, RedactingSanitizer)
+
+    [out] =
+      Filters.apply(
+        [post(%{body: "<p>SECRET body</p>", summary: "<p>SECRET summary</p>"})],
+        filters()
+      )
+
+    assert out.body == "<p>*** body</p>"
+    assert out.summary == "<p>*** summary</p>"
+  end
+
+  test "the adapter is not called when sanitize_html is false" do
+    start_supervised!(RecordingSanitizer)
+    Application.put_env(:exoplanet, :sanitizer_adapter, RecordingSanitizer)
+
+    html = ~s(<p>hi</p><iframe></iframe>)
+    [out] = Filters.apply([post(%{body: html})], filters(%{sanitize_html: false}))
+
+    assert RecordingSanitizer.calls() == []
+    # No sanitization at all: body is untouched (iframe survives).
+    assert out.body == html
+  end
+
+  test "the adapter is called once per non-empty field, skipping nil/empty" do
+    start_supervised!(RecordingSanitizer)
+    Application.put_env(:exoplanet, :sanitizer_adapter, RecordingSanitizer)
+
+    Filters.apply([post(%{body: "<p>b</p>", summary: ""})], filters())
+    # body is sanitized; summary "" is skipped; nil fields are skipped.
+    assert RecordingSanitizer.calls() == ["<p>b</p>"]
+  end
+
+  test "strip_images runs after the adapter" do
+    Application.put_env(:exoplanet, :sanitizer_adapter, PassthroughSanitizer)
+
+    html = ~s(<p>x</p><img src="https://e/x.png" alt="Pic">)
+    [out] = Filters.apply([post(%{body: html})], filters(%{strip_images: true}))
+
+    # Adapter kept the <img>; the strip pass then rewrote it to a text link.
+    refute out.body =~ "<img"
+    assert out.body =~ ~s(<a href="https://e/x.png">Pic</a>)
+  end
+
+  test "with no adapter configured, output matches the built-in sanitizer" do
+    # :sanitizer_adapter is unset (setup deletes it on exit; not set here).
+    html = ~s|<p>ok</p><script>evil()</script>|
+    [out] = Filters.apply([post(%{body: html})], filters())
+
+    refute out.body =~ "<script"
+    assert out.body =~ "<p>ok</p>"
   end
 end
