@@ -128,4 +128,25 @@ defmodule Exoplanet.FiltersSanitizerTest do
     refute out.body =~ "<script"
     assert out.body =~ "<p>ok</p>"
   end
+
+  # SVG SMIL animation can set an ancestor <a>'s href to a javascript: URL via
+  # the animation element's `to`/`values` attributes — attribute names the
+  # URL-scheme allowlist doesn't cover. These elements are in the default
+  # drop_tags so the whole element (payload included) is removed.
+  test "default sanitizer drops SVG SMIL animation elements carrying javascript:" do
+    for {label, html} <- [
+          {"animate",
+           ~s|<svg><a><animate attributeName="href" values="javascript:alert(1)"/><text>x</text></a></svg>|},
+          {"set", ~s|<svg><a><set attributeName="href" to="javascript:alert(1)"/></a></svg>|},
+          {"animateTransform",
+           ~s|<svg><animateTransform attributeName="href" to="javascript:alert(1)"/></svg>|},
+          {"animateMotion",
+           ~s|<svg><animateMotion attributeName="href" values="javascript:alert(1)"/></svg>|}
+        ] do
+      [out] = Filters.apply([post(%{body: html})], filters())
+
+      refute out.body =~ "javascript:", "#{label}: javascript: payload survived sanitization"
+      refute out.body =~ "<#{label}", "#{label}: animation element survived sanitization"
+    end
+  end
 end

@@ -17,9 +17,9 @@
     block_categories: ["personal", "food", "travel"],
     strip_images: false,
     excerpt_length: nil,
-    sanitize_html: true,
-    drop_tags: ~w(iframe script object embed style base),
-    drop_attrs: ~w(style)
+    sanitize_html: true
+    # `drop_tags` / `drop_attrs` are omitted so they inherit the secure
+    # built-in defaults — see `Exoplanet.Filters` to customize them.
   },
 
   # Required: feed sources. Each entry can carry optional metadata that

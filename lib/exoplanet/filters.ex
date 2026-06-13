@@ -46,13 +46,20 @@ defmodule Exoplanet.Filters do
   @url_attrs ~w(href src srcset action formaction poster xlink:href)
   @allowed_schemes ~w(http https mailto)
 
+  # Default dropped tags. Beyond the classic script-bearing elements, the SVG
+  # SMIL animation elements (`animate`, `set`, `animateTransform`,
+  # `animateMotion`) are dropped because they can animate an ancestor's `href`
+  # to a `javascript:` URL via their `to`/`values`/`from`/`by` attributes —
+  # attribute names the URL-scheme allowlist doesn't cover — bypassing the
+  # attribute-level checks. Inline `<svg>` images are unaffected.
   @defaults %{
     allow_categories: [],
     block_categories: [],
     strip_images: false,
     excerpt_length: nil,
     sanitize_html: true,
-    drop_tags: ~w(iframe script object embed style base),
+    drop_tags:
+      ~w(iframe script object embed style base animate set animateTransform animateMotion),
     drop_attrs: ~w(style)
   }
 

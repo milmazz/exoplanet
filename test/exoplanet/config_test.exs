@@ -13,7 +13,8 @@ defmodule Exoplanet.ConfigTest do
                strip_images: false,
                excerpt_length: nil,
                sanitize_html: true,
-               drop_tags: ~w(iframe script object embed style base),
+               drop_tags:
+                 ~w(iframe script object embed style base animate set animateTransform animateMotion),
                drop_attrs: ~w(style)
              }
     end
@@ -42,7 +43,8 @@ defmodule Exoplanet.ConfigTest do
                strip_images: true,
                excerpt_length: 500,
                sanitize_html: true,
-               drop_tags: ~w(iframe script object embed style base),
+               drop_tags:
+                 ~w(iframe script object embed style base animate set animateTransform animateMotion),
                drop_attrs: ~w(style)
              }
     end

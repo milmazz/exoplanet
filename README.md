@@ -18,7 +18,7 @@ Add `:exoplanet` to your dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:exoplanet, "~> 0.5"}
+    {:exoplanet, "~> 0.6"}
   ]
 end
 ```
@@ -39,9 +39,9 @@ Describe your feeds in an `.exs` file that returns a map:
     block_categories: [],
     strip_images: false,
     excerpt_length: nil,
-    sanitize_html: true,
-    drop_tags: ~w(iframe script object embed style base),
-    drop_attrs: ~w(style)
+    sanitize_html: true
+    # `drop_tags` / `drop_attrs` are omitted so they inherit the secure
+    # built-in defaults — see `Exoplanet.Filters` to customize them.
   },
   sources: %{
     "https://milmazz.uno/atom.xml" => %{name: "Milton Mazzarri"},
@@ -59,8 +59,8 @@ posts  = Exoplanet.build(config)
 
 `posts` is a list of `Exoplanet.Post` structs sorted newest-first. See
 [example/planet_beam.exs](example/planet_beam.exs) for a fuller config that
-exercises every supported field, and `Exoplanet.Filters` for the filter
-semantics.
+exercises the supported fields (it leaves `drop_tags` / `drop_attrs` at
+their secure defaults), and `Exoplanet.Filters` for the filter semantics.
 
 ### A note on ordering and time zones
 
